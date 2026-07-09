@@ -312,17 +312,23 @@
   </div>
 </div>
 
+<script src="vox-engine.js"></script>
 <script>
 (()=>{
 "use strict";
 const TAU=Math.PI*2;
 const clamp=(v,a,b)=>v<a?a:(v>b?b:v);
 const MOBILE=matchMedia('(pointer:coarse)').matches||(navigator.maxTouchPoints>0&&Math.min(screen.width||1024,screen.height||768)<=820);
-const NOTES=['C','C♯','D','D♯','E','F','F♯','G','G♯','A','A♯','B'];
 
-// concert pitch: A4 = 432 Hz by default (toggleable to 440)
-let tuneA=432;
-try{ if(parseInt(localStorage.getItem('voxTuneA'))===440) tuneA=440; }catch(e){}
+// The listening engine lives in vox-engine.js (Vox.Engine, no DOM). This page
+// owns the UI, the shruti drone, the tone test and the chakra journey.
+let _tuneA=432;
+try{ if(parseInt(localStorage.getItem('voxTuneA'))===440) _tuneA=440; }catch(e){}
+const engine=new Vox.Engine({tuneA:_tuneA});
+const NOTES=Vox.NOTES;
+const midiName=Vox.midiName;
+const midiHz=m=>engine.midiToHz(m);
+const eng=engine.state;   // live feature state, mutated by the engine each frame
 
 // the user's home toning note, found by the tone test (midi number)
 let homeNote=0;
@@ -333,67 +339,36 @@ try{ const o=parseInt(localStorage.getItem('voxChakraOct')); if(o===48||o===60) 
 
 // cross-tab audio focus: starting sound in any Resonance tab quiets the others
 const bc=('BroadcastChannel' in window)?new BroadcastChannel('resonance-audio'):null;
-if(bc) bc.onmessage=e=>{ if(e.data==='claim'){ if(mode==='mic') stopMic(); if(droneOn) droneSet(false); } };
+if(bc) bc.onmessage=e=>{ if(e.data==='claim'){ if(engine.running) engine.stop(); if(droneOn) droneSet(false); syncUI(); } };
 const claimAudio=()=>{ if(bc){ try{bc.postMessage('claim');}catch(e){} } };
 
-/* =====================================================================
-   VOX LISTENING ENGINE — tuned for the singing voice.
-   Pipeline: mic -> high-pass clean -> VAD -> tone segmentation ->
-   F0 tracking (normalized autocorrelation) -> amplitude/breath envelope ->
-   spectral features (centroid, harmonic richness, timbre) ->
-   formant estimation (F1/F2) -> jitter / shimmer / HNR ->
-   vocal coherence score -> biofeedback display + session log.
-   ===================================================================== */
-
-// ---------- audio graph ----------
-let actx=null, analyser=null, hpf=null, srcNode=null, micStream=null;
-let td=null, fd=null, binHz=0, SR=48000;
-let mode='idle';
-
-function ensureCtx(){
-  if(actx) return;
-  actx=new (window.AudioContext||window.webkitAudioContext)();
-  SR=actx.sampleRate;
-  // signal cleaning: high-pass removes room rumble & handling noise below the voice
-  hpf=actx.createBiquadFilter(); hpf.type='highpass'; hpf.frequency.value=70; hpf.Q.value=0.71;
-  analyser=actx.createAnalyser();
-  analyser.fftSize=4096; analyser.smoothingTimeConstant=0.5;
-  hpf.connect(analyser);
-  td=new Float32Array(analyser.fftSize);
-  fd=new Float32Array(analyser.frequencyBinCount);
-  binHz=SR/analyser.fftSize;
-}
+// ---------- audio glue ----------
+// The drone and chime below share the engine's AudioContext, so we mirror a
+// couple of its handles (actx/SR) that the drone code reads directly.
+let actx=null, SR=48000;
+function ensureCtx(){ engine.ensureContext(); actx=engine.audioContext; SR=engine.sampleRate; }
 let micPending=false;
 async function useMic(){
   if(micPending) return;
-  if(mode==='mic'){ stopMic(); return; }
+  if(engine.running){ stopMic(); return; }
   micPending=true;
   const vb=document.getElementById('vMic'), vTxt=vb.textContent;
   vb.textContent='Connecting…';
-  let stream;
-  try{ stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}}); }
-  catch(e){ micPending=false; vb.textContent=vTxt; alert('Mic unavailable — check browser permissions.'); return; }
+  const ok=await engine.start();
   micPending=false; vb.textContent=vTxt;
-  ensureCtx(); await actx.resume();
-  micStream=stream; mode='mic';
-  srcNode=actx.createMediaStreamSource(micStream); srcNode.connect(hpf);
-  if(!session.start) session.start=Date.now();
+  if(!ok){ alert('Mic unavailable — check browser permissions.'); return; }
+  actx=engine.audioContext; SR=engine.sampleRate;
   claimAudio();
   reveal(); syncUI();
 }
-function stopMic(){
-  if(srcNode){ try{srcNode.disconnect();}catch(e){} srcNode=null; }
-  if(micStream){ micStream.getTracks().forEach(t=>t.stop()); micStream=null; }
-  mode='idle'; endTone(); syncUI();
-}
+function stopMic(){ engine.stop(); syncUI(); }
 
 // ---------- reference drone ----------
 const DRONES=[];   // C2..C6
 for(let m=36;m<=84;m++) DRONES.push(m);
 let droneIdx=(homeNote||57)-36;           // your found note, else A3 (midi 57)
 let droneNodes=null, droneOn=false, shrutiPW=null;
-const midiHz=m=>tuneA*Math.pow(2,(m-69)/12);
-const midiName=m=>NOTES[m%12]+(Math.floor(m/12)-1);
+// midiHz / midiName come from the engine setup at the top of this script.
 // shruti-box voice: free-reed spectrum — strong low harmonics, a gentle mid bump,
 // rolling off into air. Played by three reeds a few cents apart so the unison shimmers.
 function shrutiWave(){
@@ -457,218 +432,10 @@ function droneStep(d){
   if(droneOn) droneSet(true); else syncUI();
 }
 
-/* ---------- the engine state ---------- */
-const eng={
-  lvl:0, floor:1e-4,                 // rms level + adaptive noise floor
-  voiced:false, vadHold:0,           // voice activity
-  f0:0, clarity:0,                   // pitch + periodicity confidence
-  midiC:0,                           // continuous midi (fractional)
-  stab:99,                           // rolling pitch std-dev, cents
-  jitter:0, shimmer:0, hnr:0,        // voice quality
-  centroid:0, rich:0,                // brightness + harmonic richness
-  f1:0, f2:0, vowel:'—',             // resonance mapping
-  breath:0,                          // current tone duration, s
-  coh:0, cohShow:0,                  // vocal coherence score
-  prevF0:0, prevRms:0,
-};
-const f0Med=[];                      // median-of-5 anti-octave-glitch
-const pHist=new Float32Array(72);    // ~1.2s of cents history for stability
-let pHistN=0, pHistI=0;
-
-// ---------- F0: normalized autocorrelation with octave guard ----------
-const ACW=2048;
-function trackPitch(){
-  const minLag=Math.floor(SR/800), maxLag=Math.min(Math.floor(SR/70), td.length-ACW-1);
-  let e0=0; for(let i=0;i<ACW;i++) e0+=td[i]*td[i];
-  if(e0<1e-7) return {f0:0,r:0};
-  // sliding window energy
-  let eW=0; for(let i=minLag;i<minLag+ACW;i++) eW+=td[i]*td[i];
-  let bestR=0, rPrev=0, rPrev2=0, bestLag=0;
-  const rArr=new Float32Array(maxLag+1);
-  for(let lag=minLag;lag<=maxLag;lag++){
-    let c=0;
-    for(let i=0;i<ACW;i++) c+=td[i]*td[i+lag];
-    const r=c/Math.sqrt(e0*eW+1e-12);
-    rArr[lag]=r;
-    if(r>bestR){ bestR=r; bestLag=lag; }
-    eW+=td[lag+ACW]*td[lag+ACW]-td[lag]*td[lag];
-  }
-  if(bestR<0.3) return {f0:0,r:bestR};
-  // octave guard: take the FIRST local peak that gets within 88% of the global max
-  let lag=bestLag;
-  for(let L=minLag+1;L<maxLag;L++){
-    if(rArr[L]>=rArr[L-1]&&rArr[L]>=rArr[L+1]&&rArr[L]>=bestR*0.88){ lag=L; break; }
-  }
-  // parabolic refinement
-  const a=rArr[lag-1]||0,b=rArr[lag],c2=rArr[lag+1]||0;
-  const den=a-2*b+c2;
-  const sh=den?clamp(0.5*(a-c2)/den,-0.5,0.5):0;
-  return {f0:SR/(lag+sh), r:rArr[lag]};
-}
-
-// ---------- tone segmentation + session ----------
-const session={start:0, tones:[]};
-let tone=null;
-function beginTone(){
-  tone={t0:performance.now(), n:0, f0s:[], coh:0, stab:0, hnr:0, jit:0, shim:0, rich:0, rms:0};
-}
-function endTone(){
-  if(!tone) return;
-  const dur=(performance.now()-tone.t0)/1000;
-  if(dur>=1.0 && tone.n>=20){
-    const f0s=tone.f0s.slice().sort((x,y)=>x-y);
-    const f0m=f0s[f0s.length>>1];
-    const midi=Math.round(69+12*Math.log2(f0m/440));
-    session.tones.push({
-      dur, f0:f0m, note:midiName(midi),
-      coh:tone.coh/tone.n, stab:tone.stab/tone.n, hnr:tone.hnr/tone.n,
-      jit:tone.jit/tone.n, shim:tone.shim/tone.n, rich:tone.rich/tone.n,
-    });
-  }
-  tone=null;
-}
-
-// ---------- per-frame analysis ----------
-function analyze(){
-  if(!analyser||mode!=='mic') return;
-  analyser.getFloatTimeDomainData(td);
-  analyser.getFloatFrequencyData(fd);
-
-  // amplitude envelope
-  let s=0; for(let i=0;i<td.length;i++) s+=td[i]*td[i];
-  const rms=Math.sqrt(s/td.length);
-  eng.lvl+=(rms-eng.lvl)*0.3;
-
-  // pitch + periodicity
-  const gate=Math.max(eng.floor*3.5, 0.006);
-  let p={f0:0,r:0};
-  if(rms>gate) p=trackPitch();
-
-  // voice activity detection: energy above adaptive floor AND periodic
-  const voicedNow=(rms>gate && p.r>0.60 && p.f0>=70 && p.f0<=800);
-  if(voicedNow) eng.vadHold=14;                 // ~0.25s hangover
-  else if(eng.vadHold>0) eng.vadHold--;
-  const wasVoiced=eng.voiced;
-  eng.voiced=eng.vadHold>0;
-  if(!eng.voiced) eng.floor+=(rms-eng.floor)*0.02;   // learn the noise floor in silence
-
-  // tone segmentation
-  if(eng.voiced&&!wasVoiced) beginTone();
-  if(!eng.voiced&&wasVoiced) endTone();
-
-  if(voicedNow){
-    // median-of-5 F0 smoothing kills octave glitches
-    f0Med.push(p.f0); if(f0Med.length>5) f0Med.shift();
-    const srt=f0Med.slice().sort((a,b)=>a-b);
-    const f0=srt[srt.length>>1];
-    eng.clarity=p.r;
-
-    // jitter: frame-to-frame period perturbation (RAP-like)
-    if(eng.prevF0>0){
-      const jRaw=Math.abs(1/f0-1/eng.prevF0)*f0;
-      eng.jitter+=(clamp(jRaw,0,0.08)-eng.jitter)*0.06;
-    }
-    eng.prevF0=f0;
-    // shimmer: frame-to-frame amplitude perturbation
-    if(eng.prevRms>0){
-      const shRaw=Math.abs(rms-eng.prevRms)/Math.max(rms,eng.prevRms);
-      eng.shimmer+=(clamp(shRaw,0,0.6)-eng.shimmer)*0.06;
-    }
-    eng.prevRms=rms;
-    // HNR from normalized ACF peak (Boersma)
-    const r=clamp(p.r,0.01,0.999);
-    const hnrRaw=10*Math.log10(r/(1-r));
-    eng.hnr+=(clamp(hnrRaw,0,35)-eng.hnr)*0.08;
-
-    eng.f0=f0;
-    eng.midiC=69+12*Math.log2(f0/tuneA);
-    // pitch stability: rolling std-dev in cents over ~1.2s
-    pHist[pHistI]=eng.midiC*100; pHistI=(pHistI+1)%pHist.length; if(pHistN<pHist.length)pHistN++;
-    if(pHistN>18){
-      let m=0; for(let i=0;i<pHistN;i++)m+=pHist[i]; m/=pHistN;
-      let v=0; for(let i=0;i<pHistN;i++){const d=pHist[i]-m;v+=d*d;}
-      eng.stab+=(Math.min(99,Math.sqrt(v/pHistN))-eng.stab)*0.15;
-    }
-
-    // ---- spectral features ----
-    const lin=specLin();
-    // brightness: spectral centroid 80–6000 Hz
-    let num=0,den=0;
-    const i0=Math.max(1,(80/binHz)|0), i1=Math.min(lin.length,(6000/binHz)|0);
-    for(let i=i0;i<i1;i++){ num+=i*binHz*lin[i]; den+=lin[i]; }
-    if(den>0) eng.centroid+=((num/den)-eng.centroid)*0.12;
-    // harmonic richness + timbre profile: overtone energy relative to the fundamental
-    let h1=0, hs=0, nH=0;
-    for(let k=1;k<=10;k++){
-      const f=f0*k; if(f>SR/2-200) break;
-      const b=Math.round(f/binHz);
-      let a=0; for(let d=-1;d<=1;d++) a=Math.max(a,lin[b+d]||0);
-      if(k===1) h1=a; else { hs+=a; if(h1>0&&a>h1*0.02) nH++; }
-    }
-    const richRaw=h1>0?clamp(hs/h1/1.6,0,1):0;
-    eng.rich+=(richRaw-eng.rich)*0.1;
-    eng.nHarm=nH;
-    // formants / resonance mapping: strongest spectral peaks under the vocal envelope
-    const fm=formants(lin,f0);
-    if(fm){ eng.f1+=(fm[0]-eng.f1)*0.15; eng.f2+=(fm[1]-eng.f2)*0.15; eng.vowel=vowelName(eng.f1,eng.f2); }
-
-    // breath: current tone length
-    if(tone) eng.breath=(performance.now()-tone.t0)/1000;
-
-    // ---- vocal coherence score ----
-    const sStab =clamp(1-(eng.stab-3)/45,0,1);            // 3¢ steady -> 48¢ scattered
-    const sClar =clamp((eng.hnr-5)/17,0,1);               // 5 dB -> 22 dB
-    const sSmooth=clamp(1-(eng.jitter/0.012+eng.shimmer/0.10)/2,0,1);
-    const sRich =clamp(eng.rich/0.6,0,1);
-    const sBreath=clamp(eng.breath/8,0,1);
-    eng.coh=100*(0.30*sStab+0.25*sClar+0.20*sSmooth+0.15*sRich+0.10*sBreath);
-    eng.cohShow+=(eng.coh-eng.cohShow)*0.08;
-
-    if(tone){
-      tone.n++; tone.f0s.push(f0);
-      tone.coh+=eng.coh; tone.stab+=eng.stab; tone.hnr+=eng.hnr;
-      tone.jit+=eng.jitter; tone.shim+=eng.shimmer; tone.rich+=eng.rich;
-    }
-  } else {
-    eng.prevF0=0; eng.prevRms=0; f0Med.length=0;
-    if(!eng.voiced){ eng.cohShow*=0.985; eng.breath=0; pHistN=0; pHistI=0; }
-  }
-  if(quiz.active) quizTick();
-  if(jr.active) jrTick();
-  if(window.__log) __log.push([performance.now()/1000,eng.voiced?1:0,+eng.f0.toFixed(2),+eng.clarity.toFixed(3),
-    +eng.stab.toFixed(1),+eng.jitter.toFixed(4),+eng.shimmer.toFixed(4),+eng.hnr.toFixed(1),
-    +eng.coh.toFixed(1),Math.round(eng.centroid),Math.round(eng.f1),Math.round(eng.f2),+eng.rich.toFixed(3)]);
-}
-// dB spectrum -> linear magnitude
-let linBuf=null;
-function specLin(){
-  if(!linBuf) linBuf=new Float32Array(fd.length);
-  for(let i=0;i<fd.length;i++) linBuf[i]=Math.pow(10,fd[i]/20);
-  return linBuf;
-}
-// F1/F2: strongest peaks in the classic formant bands (v1: comb-sampled envelope)
-function formants(lin,f0){
-  const find=(lo,hi)=>{
-    let bi=-1,bv=0;
-    const a=Math.max(2,(lo/binHz)|0), b=Math.min(lin.length-2,(hi/binHz)|0);
-    for(let i=a;i<=b;i++){ const v=lin[i-1]+lin[i]*2+lin[i+1]; if(v>bv){bv=v;bi=i;} }
-    return bi>0?bi*binHz:0;
-  };
-  const f1=find(Math.max(220,f0*0.8),1100);
-  if(!f1) return null;
-  const f2=find(Math.max(1250,f1+300),3200);
-  return f2?[f1,f2]:[f1,0];
-}
-const VOWELS=[['ee',280,2250],['ih',400,1900],['eh',550,1770],['ah',710,1150],['aw',590,880],['oh',450,800],['oo',310,880]];
-function vowelName(f1,f2){
-  if(!f1||!f2) return '—';
-  let best='—',bd=1e9;
-  for(const [n,a,b] of VOWELS){
-    const d=Math.pow(Math.log(f1/a),2)+Math.pow(Math.log(f2/b),2);
-    if(d<bd){bd=d;best=n;}
-  }
-  return best;
-}
+/* The engine state, F0 tracking, tone segmentation and per-frame analysis
+   now live in vox-engine.js. This page reads the live `eng` state (aliased
+   above) and the accumulated engine.session, and subscribes via
+   engine.onFrame(...) near the bottom to drive the tone test and journey. */
 
 /* ---------- biofeedback display ---------- */
 const $=id=>document.getElementById(id);
@@ -752,7 +519,7 @@ function drawStrip(){
 let lastDraw=0, rafLive=true, domT=0;
 function draw(t){
   if(document.hidden){ rafLive=false; return; }
-  const gap=(mode!=='mic')?200:(MOBILE?33:16);
+  const gap=(!engine.running)?200:(MOBILE?33:16);
   if(t-lastDraw<gap){ requestAnimationFrame(draw); return; }
   lastDraw=t;
   if(t-lastPush>100){
@@ -798,11 +565,11 @@ function updateDOM(){
   } else {
     $('noteBig').firstChild.textContent='—'; $('noteOct').textContent='';
     $('noteBig').style.color='';
-    $('hzTxt').textContent=mode==='mic'?'listening…':'mic off';
+    $('hzTxt').textContent=engine.running?'listening…':'mic off';
     $('matchTxt').textContent='';
     $('cohNum').textContent=eng.cohShow>1?Math.round(eng.cohShow):'—';
     $('cohNum').style.color='';
-    $('cohWord').textContent=mode==='mic'?'resting':'\u00a0';
+    $('cohWord').textContent=engine.running?'resting':'\u00a0';
   }
 }
 
@@ -810,9 +577,9 @@ function updateDOM(){
 const LS='voxSessions';
 function endSession(){
   jrAbort();
-  endTone(); if(mode==='mic') stopMic();
+  engine.endTone(); if(engine.running) stopMic();
   if(droneOn) droneSet(false);
-  const T=session.tones;
+  const T=engine.session.tones;
   const avg=k=>T.length?T.reduce((a,t)=>a+t[k],0)/T.length:0;
   $('sCoh').textContent=T.length?Math.round(avg('coh')):'—';
   $('sCoh').style.color=T.length?scoreColor(avg('coh')):'';
@@ -851,7 +618,7 @@ function drawTrend(hist,current){
   });
 }
 function saveSession(){
-  const T=session.tones;
+  const T=engine.session.tones;
   if(T.length){
     const hist=readSessions();
     const avg=k=>T.reduce((a,t)=>a+t[k],0)/T.length;
@@ -863,7 +630,7 @@ function saveSession(){
   closeSummary();
 }
 function closeSummary(){
-  session.tones=[]; session.start=0;
+  engine.session.tones=[]; engine.session.start=0;
   chart.coh.length=0; chart.f0.length=0;
   $('summary').classList.add('hide');
   lab.classList.add('hide'); dock.classList.add('hide');
@@ -1033,8 +800,8 @@ function chime(m){                       // soft bell in the incoming chakra's p
   setTimeout(()=>{ try{g.disconnect();}catch(e){} },3500);
 }
 async function jrEntry(){
-  if(mode!=='mic') await useMic();
-  if(mode!=='mic') return;
+  if(!engine.running) await useMic();
+  if(!engine.running) return;
   if(quiz.active) quizEnd();
   chakraOct?jrPick():jrOct();
 }
@@ -1165,14 +932,14 @@ function jrClock(ms){
 const veil=$('veil'), dock=$('dock');
 function reveal(){ veil.classList.add('gone'); lab.classList.remove('hide'); dock.classList.remove('hide'); }
 function syncUI(){
-  $('dMic').classList.toggle('active',mode==='mic');
+  $('dMic').classList.toggle('active',engine.running);
   $('dDrone').classList.toggle('active',droneOn);
   const dn=$('droneNote'); dn.textContent=midiName(DRONES[droneIdx]); dn.classList.toggle('on',droneOn);
-  $('dTune').textContent='A='+tuneA;
+  $('dTune').textContent='A='+engine.tuneA;
 }
 function tuneToggle(){
-  tuneA=tuneA===432?440:432;
-  try{ localStorage.setItem('voxTuneA',tuneA); }catch(e){}
+  engine.setTuneA(engine.tuneA===432?440:432);
+  try{ localStorage.setItem('voxTuneA',engine.tuneA); }catch(e){}
   if(droneOn) droneSet(true);          // re-pitch a sounding drone immediately
   syncUI();
 }
@@ -1188,8 +955,8 @@ function veilRefresh(){
   }
 }
 async function quizEntry(){
-  if(mode!=='mic') await useMic();
-  if(mode==='mic') quizStart();
+  if(!engine.running) await useMic();
+  if(engine.running) quizStart();
 }
 $('vQuiz').onclick=quizEntry;
 $('dQuiz').onclick=quizEntry;
@@ -1240,12 +1007,19 @@ document.addEventListener('visibilitychange',()=>{
   if(!document.hidden && !rafLive){ rafLive=true; lastDraw=0; requestAnimationFrame(draw); }
 });
 
-function loopFeat(){ analyze(); setTimeout(loopFeat, document.hidden?250:(MOBILE?33:1000/60)); }
+// each analysed frame drives the tone test / journey, plus the optional debug log
+engine.onFrame(()=>{
+  if(quiz.active) quizTick();
+  if(jr.active) jrTick();
+  if(window.__log) __log.push([performance.now()/1000,eng.voiced?1:0,+eng.f0.toFixed(2),+eng.clarity.toFixed(3),
+    +eng.stab.toFixed(1),+eng.jitter.toFixed(4),+eng.shimmer.toFixed(4),+eng.hnr.toFixed(1),
+    +eng.coh.toFixed(1),Math.round(eng.centroid),Math.round(eng.f1),Math.round(eng.f2),+eng.rich.toFixed(3)]);
+});
 
 // go — claim audio focus on arrival so a forgotten gong tab goes quiet immediately
 claimAudio();
 veilRefresh();
-resize(); syncUI(); loopFeat(); requestAnimationFrame(draw);
+resize(); syncUI(); requestAnimationFrame(draw);
 })();
 </script>
 </body>

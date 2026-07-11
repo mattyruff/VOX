@@ -9,6 +9,7 @@
 <meta property="og:description" content="Tone the seven chakras with a shruti drone and watch your voice bloom — colour, breath, and resonance, alive in real time.">
 <meta name="theme-color" content="#04070a">
 <title>Vox — Vocal Toning</title>
+<meta name="vox-version" content="0.2.0">
 <style>
   :root{
     --void:#04070a; --ink:#d9e6e2; --muted:#6f8580;
@@ -116,6 +117,36 @@
     border:1px solid var(--line);border-radius:10px;padding:.55rem .8rem;cursor:pointer;transition:.15s;flex:none}
   #dEnd:hover{color:var(--gold);border-color:var(--gold-deep)}
 
+  /* ---------- desktop: the lab at full size ---------- */
+  @media (min-width:1100px) and (min-height:640px){
+    #lab{justify-content:safe center;gap:1.3rem;padding:70px 4vw 140px}
+    #noteBig{font-size:clamp(4.2rem,7vw,6.4rem)}
+    #hzTxt{font-size:1.15rem}
+    #centsWrap{width:min(560px,50vw)}
+    #centsTrack{height:6px}
+    #centsTrack::before{top:-5px;height:16px}
+    #centsDot{width:16px;height:16px;top:-5px}
+    #centsLbl{font-size:.74rem;margin-top:8px}
+    #orb{width:min(500px,52vh)}
+    #cohNum{font-size:3.1rem}
+    #cohWord{font-size:.78rem}
+    #dDetails{font-size:.74rem}
+    #tiles{grid-template-columns:repeat(4,minmax(160px,210px));gap:.9rem}
+    .tile{padding:.9rem 1.05rem;border-radius:16px}
+    .tile .tv{font-size:1.45rem}
+    .tile .tl{font-size:.68rem}
+    .tile .ts{font-size:.74rem}
+    #strip{width:min(940px,90vw);height:110px}
+    #dock{gap:14px;padding:14px 20px;border-radius:20px;bottom:28px}
+    .ic{width:54px;height:54px;border-radius:14px}
+    .ic svg{width:27px;height:27px}
+    .sep{height:34px}
+    #droneNote{font-size:.95rem;min-width:4.4ch}
+    .nbtn{width:34px;height:42px;font-size:1.3rem}
+    #dTune{font-size:.78rem;padding:.5rem .7rem;border-radius:10px}
+    #dEnd{font-size:.84rem;padding:.72rem 1.1rem;border-radius:12px}
+  }
+
   /* ---------- summary ---------- */
   #summary{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;
     background:rgba(2,5,6,.82);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);transition:opacity .4s}
@@ -196,9 +227,9 @@
   <p>A vocal toning companion. Hum with the shruti drone and watch your voice
      bloom — colour, breath, and resonance, alive in real time.</p>
   <div class="cta" style="display:flex;gap:.7rem;flex-wrap:wrap;justify-content:center">
-    <button class="b solid" id="vJourney">Chakra journey</button>
-    <button class="b" id="vQuiz">Find your tone</button>
-    <button class="b" id="vMic">Straight to the lab</button>
+    <button class="b solid" id="vQuiz">Find my Tone</button>
+    <button class="b" id="vJourney">Chakra Journey</button>
+    <button class="b" id="vMic">Vocal Lab</button>
   </div>
   <p class="priv">Everything runs in your browser. Your voice is never recorded, stored, or uploaded.</p>
 </div>
@@ -475,23 +506,26 @@ function drawOrb(){
   const breathe=0.5+0.5*Math.sin(performance.now()/1700);
   const lvl=clamp(eng.lvl*7,0,1);
   const R=w*0.26*(0.9+0.06*breathe)*(1+0.16*(eng.voiced?lvl:0));
-  const A=eng.voiced?0.5+0.4*coh:0.2+0.08*breathe;
+  const A=eng.voiced?0.62+0.38*coh:0.34+0.12*breathe;
   let gr=octx.createRadialGradient(c,c,0,c,c,R*2.1);
-  gr.addColorStop(0,'rgba('+r+','+g+','+b+','+(0.34*A)+')');
+  gr.addColorStop(0,'rgba('+r+','+g+','+b+','+(0.5*A)+')');
   gr.addColorStop(1,'rgba('+r+','+g+','+b+',0)');
   octx.fillStyle=gr; octx.fillRect(0,0,w,h);
   gr=octx.createRadialGradient(c-R*0.25,c-R*0.3,R*0.1,c,c,R);
-  gr.addColorStop(0,'rgba(255,255,255,'+(0.75*A)+')');
-  gr.addColorStop(0.35,'rgba('+r+','+g+','+b+','+(0.85*A)+')');
-  gr.addColorStop(1,'rgba('+r+','+g+','+b+','+(0.12*A)+')');
+  gr.addColorStop(0,'rgba(255,255,255,'+(0.9*A)+')');
+  gr.addColorStop(0.35,'rgba('+r+','+g+','+b+','+(0.95*A)+')');
+  gr.addColorStop(1,'rgba('+r+','+g+','+b+','+(0.22*A)+')');
   octx.beginPath(); octx.arc(c,c,R,0,TAU); octx.fillStyle=gr; octx.fill();
+  // crisp rim so the orb reads as a defined body, not just a glow
+  octx.beginPath(); octx.arc(c,c,R,0,TAU);
+  octx.strokeStyle='rgba('+r+','+g+','+b+','+(0.6*A)+')'; octx.lineWidth=1.6*DPR; octx.stroke();
   if(eng.voiced&&coh>0.02){
     const a0=-Math.PI/2;
     octx.lineCap='round';
     octx.beginPath(); octx.arc(c,c,R*1.45,a0,a0+TAU*coh);
-    octx.strokeStyle='rgba('+r+','+g+','+b+',0.22)'; octx.lineWidth=7*DPR; octx.stroke();
+    octx.strokeStyle='rgba('+r+','+g+','+b+',0.3)'; octx.lineWidth=7*DPR; octx.stroke();
     octx.beginPath(); octx.arc(c,c,R*1.45,a0,a0+TAU*coh);
-    octx.strokeStyle='rgba('+r+','+g+','+b+',0.8)'; octx.lineWidth=2.2*DPR; octx.stroke();
+    octx.strokeStyle='rgba('+r+','+g+','+b+',0.95)'; octx.lineWidth=2.2*DPR; octx.stroke();
   }
 }
 function drawStrip(){
@@ -671,25 +705,28 @@ function qGo(i){
   quiz.step=i; quiz.voicedMs=0; quiz.silentMs=0; quiz.doneMs=0; quiz.lastT=performance.now();
   qBeads(i);
   $('qChips').hidden=true; $('qChips').style.flexDirection=''; $('qFill').style.width='0';
-  $('qSkip').textContent='Skip'; $('qSkip').style.visibility='';
+  $('qSkip').style.visibility='hidden';
   $('qNext').textContent='Next'; $('qNext').style.visibility='';
   $('qNote').style.color='';
   const name=qName(i);
   if(name==='setup'){
     $('qTitle').textContent='Find your tone';
-    $('qText').textContent='We\u2019ll wander up a scale together — you tone each note over the shruti drone, and Vox listens for where your voice feels most at home. First: where does your voice live?';
+    $('qText').textContent='We\u2019ll wander up a scale together — you tone each note over the shruti drone, and Vox listens for where your voice feels most at home. First: where does your voice live? Tap each range to hear its drone.';
     $('qNote').textContent='—'; $('qSub').textContent='';
-    $('qNext').style.visibility='hidden';
+    $('qNext').textContent='Begin'; $('qNext').style.visibility='hidden';
     const ch=$('qChips'); ch.hidden=false; ch.innerHTML='';
     [['Low',48],['Middle',53],['High',60]].forEach(([nm,root])=>{
       const b=document.createElement('button');
-      b.className='qchip'+(quizRoot===root?' best':'');
+      b.className='qchip';
       b.style.cursor='pointer'; b.style.font='inherit';
       b.innerHTML=nm+' <b>from '+midiName(root)+'</b>';
       b.onclick=()=>{
         quizRoot=root; quiz.notes=SCALE.map(o=>root+o);
         try{ localStorage.setItem('voxRoot',root); }catch(e){}
-        qGo(1);
+        [...ch.children].forEach(c=>c.classList.toggle('best',c===b));
+        droneIdx=root-36; droneSet(true);        // hear the range before choosing
+        $('qSub').textContent='sounding '+midiName(root)+' — choose, or tap another';
+        $('qNext').style.visibility='';
       };
       ch.appendChild(b);
     });
@@ -768,7 +805,8 @@ function qResult(){
     ch.appendChild(d);
   });
   $('qFill').style.width='100%';
-  $('qSkip').textContent='Walk it again'; $('qNext').textContent='Begin toning';
+  $('qSkip').style.visibility=''; $('qSkip').textContent='Walk it again';
+  $('qNext').textContent='Begin toning';
   syncUI(); veilRefresh();
 }
 
@@ -945,13 +983,13 @@ function tuneToggle(){
 }
 function veilRefresh(){
   const vq=$('vQuiz'), vm=$('vMic');
+  // fixed labels; once a home note is known the lab becomes the primary path
   if(homeNote){
     vm.classList.add('solid'); vq.classList.remove('solid');
-    vm.textContent='Begin — your note: '+midiName(homeNote);
-    vq.textContent='Retake the tone test';
+    vm.textContent='Vocal Lab · '+midiName(homeNote);
   } else {
     vq.classList.add('solid'); vm.classList.remove('solid');
-    vq.textContent='Find your tone'; vm.textContent='Straight to the lab';
+    vm.textContent='Vocal Lab';
   }
 }
 async function quizEntry(){
@@ -963,7 +1001,7 @@ $('dQuiz').onclick=quizEntry;
 $('qClose').onclick=()=>{ ovlMode==='jr'?$('quiz').classList.add('hide'):quizEnd(); };
 $('qSkip').onclick=()=>{
   if(ovlMode==='jr'){ $('quiz').classList.add('hide'); return; }
-  if(quiz.step===99) quizStart(); else quizEnd();
+  if(quiz.step===99) quizStart();                 // "Walk it again"
 };
 $('qNext').onclick=()=>{
   if(ovlMode==='jr'){
@@ -973,7 +1011,8 @@ $('qNext').onclick=()=>{
   }
   if(quiz.step===99){ quizEnd(); return; }
   const name=qName(quiz.step);
-  if(name==='warmup') qGo(2);
+  if(name==='setup'){ droneSet(false); qGo(1); }  // range chosen — end the preview
+  else if(name==='warmup') qGo(2);
   else if(name==='hold') quiz.hold.t0-=99000;     // let this note go, move on
 };
 $('vJourney').onclick=jrEntry;

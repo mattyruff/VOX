@@ -1,10 +1,10 @@
 /* =====================================================================
-   VOX LISTENING ENGINE — tuned for the singing voice.
+   VOX LISTENING ENGINE v0.2.0 — tuned for the singing voice.
 
    A self-contained, DOM-free vocal-analysis engine. It owns the
    microphone + Web Audio graph and runs the DSP pipeline:
 
-     mic -> high-pass clean -> VAD -> tone segmentation ->
+     mic -> input boost -> high-pass clean -> VAD -> tone segmentation ->
      F0 tracking (normalized autocorrelation) -> amplitude/breath envelope ->
      spectral features (centroid, harmonic richness, timbre) ->
      formant estimation (F1/F2) -> jitter / shimmer / HNR ->
@@ -50,11 +50,15 @@ class VoxEngine {
   constructor(opts){
     opts = opts || {};
     this.tuneA = opts.tuneA === 440 ? 440 : 432;   // concert pitch A4
+    // input boost: desktop/headset mics are often far quieter than phone mics,
+    // leaving real voices under the detection gate. Boosting is analysis-only
+    // (nothing is played back) and the noise gate adapts, so hot mics stay fine.
+    this.inputGain = (+opts.inputGain > 0) ? +opts.inputGain : 4;
 
     // ---- audio graph ----
     this.mode = 'idle';           // 'idle' | 'mic'
     this.SR = 48000;
-    this.ctx = null; this.analyser = null; this.hpf = null;
+    this.ctx = null; this.analyser = null; this.hpf = null; this.gainNode = null;
     this.srcNode = null; this.micStream = null;
     this.td = null; this.fd = null; this.binHz = 0;
 
@@ -98,6 +102,10 @@ class VoxEngine {
 
   midiToHz(m){ return this.tuneA * Math.pow(2, (m - 69) / 12); }
   setTuneA(hz){ this.tuneA = hz === 440 ? 440 : 432; }
+  setInputGain(v){
+    this.inputGain = (+v > 0) ? +v : this.inputGain;
+    if(this.gainNode) this.gainNode.gain.value = this.inputGain;
+  }
 
   onFrame(cb){ this._frameCbs.push(cb); return () => { const i=this._frameCbs.indexOf(cb); if(i>=0) this._frameCbs.splice(i,1); }; }
   onToneEnd(cb){ this._toneEndCbs.push(cb); return () => { const i=this._toneEndCbs.indexOf(cb); if(i>=0) this._toneEndCbs.splice(i,1); }; }
@@ -110,8 +118,11 @@ class VoxEngine {
     this.ctx = new (window.AudioContext || window.webkitAudioContext)();
     this.SR = this.ctx.sampleRate;
     // signal cleaning: high-pass removes room rumble & handling noise below the voice
+    this.gainNode = this.ctx.createGain();
+    this.gainNode.gain.value = this.inputGain;
     this.hpf = this.ctx.createBiquadFilter();
     this.hpf.type='highpass'; this.hpf.frequency.value=70; this.hpf.Q.value=0.71;
+    this.gainNode.connect(this.hpf);
     this.analyser = this.ctx.createAnalyser();
     this.analyser.fftSize=4096; this.analyser.smoothingTimeConstant=0.5;
     this.hpf.connect(this.analyser);
@@ -132,7 +143,7 @@ class VoxEngine {
     this.micStream = stream;
     this.mode = 'mic';
     this.srcNode = this.ctx.createMediaStreamSource(stream);
-    this.srcNode.connect(this.hpf);
+    this.srcNode.connect(this.gainNode);
     if(!this.session.start) this.session.start = Date.now();
     this._startLoop();
     return true;

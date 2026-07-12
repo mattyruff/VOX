@@ -9,7 +9,7 @@
 <meta property="og:description" content="Tone the seven chakras with a shruti drone and watch your voice bloom — colour, breath, and resonance, alive in real time.">
 <meta name="theme-color" content="#04070a">
 <title>Vox — Vocal Toning</title>
-<meta name="vox-version" content="0.3.0">
+<meta name="vox-version" content="0.4.0">
 <style>
   :root{
     --void:#04070a; --ink:#d9e6e2; --muted:#6f8580;
@@ -50,7 +50,8 @@
 
   /* ---------- lab ---------- */
   #lab{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;z-index:5;
-    padding:60px 4vw 120px;gap:1rem;overflow-y:auto;transition:opacity .5s ease}
+    padding:60px 4vw 120px;gap:1rem;overflow-y:auto;scrollbar-gutter:stable both-edges;
+    transition:opacity .5s ease}
   #lab.hide{opacity:0;pointer-events:none}
 
   #hero{display:flex;align-items:baseline;gap:1.2rem;margin-top:.4rem}
@@ -59,14 +60,25 @@
   #chakName{font-weight:300;font-size:1rem;letter-spacing:.24em;text-transform:uppercase;
     color:var(--muted);white-space:nowrap;transition:color .3s}
   #hzTxt{font-size:.85rem;color:var(--muted);letter-spacing:.1em}
-  #centsWrap{width:min(320px,72vw);margin-top:.1rem}
-  #centsTrack{position:relative;height:4px;background:rgba(79,216,196,.14);border-radius:2px}
-  #centsTrack::before{content:"";position:absolute;left:50%;top:-4px;width:1px;height:12px;background:var(--muted)}
-  #centsDot{position:absolute;top:-4px;left:50%;width:12px;height:12px;border-radius:50%;
-    background:var(--aqua);transform:translateX(-50%);transition:left .12s linear, background .3s}
-  #centsLbl{display:flex;justify-content:space-between;font-size:.6rem;color:var(--muted);letter-spacing:.12em;margin-top:6px}
+  /* coherence bars: vertical pitch meters flanking the orb — green centre
+     (in tune), through yellow to red at the sharp (top) and flat (bottom) edges */
+  .cohBar{position:absolute;top:50%;transform:translateY(-50%);
+    width:12px;height:62%;border-radius:999px;
+    background:linear-gradient(to bottom,
+      #e0303c 0%, #f8a622 22%, #f8cd22 34%, #2ab86b 44%, #2ab86b 56%,
+      #f8cd22 66%, #f8a622 78%, #e0303c 100%);
+    box-shadow:0 0 14px rgba(0,0,0,.5), inset 0 0 3px rgba(0,0,0,.35);
+    opacity:.9;transition:opacity .4s}
+  #cohBarL{left:-46px}
+  #cohBarR{right:-46px}
+  .cohInd{position:absolute;left:50%;top:50%;width:20px;height:20px;border-radius:50%;
+    transform:translate(-50%,-50%);background:rgba(255,255,255,.92);
+    border:2px solid rgba(4,7,10,.85);box-shadow:0 0 8px rgba(0,0,0,.6);
+    transition:top .12s linear, background .25s, box-shadow .25s}
+  .cohInd.locked{background:#2ab86b;box-shadow:0 0 14px 2px rgba(42,184,107,.8)}
+  .cohInd.idle{opacity:.3}
 
-  #orbWrap{display:flex;flex-direction:column;align-items:center;gap:.35rem;margin:.1rem 0}
+  #orbWrap{position:relative;display:flex;flex-direction:column;align-items:center;gap:.35rem;margin:.1rem 0}
   #orb{width:min(250px,60vw);aspect-ratio:1;display:block}
   #orbTxt{display:flex;flex-direction:column;align-items:center;gap:.1rem}
   #cohNum{font-weight:200;font-size:2rem;color:var(--ink);line-height:1;transition:color .5s}
@@ -86,7 +98,8 @@
   .tile .tv b{font-weight:300;color:var(--aqua)}
   .tile .tl{font-size:.58rem;letter-spacing:.18em;color:var(--muted);text-transform:uppercase}
   .tile .ts{font-size:.62rem;color:var(--muted);opacity:.8;min-height:.9em}
-  #lab.quiet .tile,#lab.quiet #hero,#lab.quiet #centsWrap{opacity:.4}
+  #lab.quiet .tile,#lab.quiet #hero{opacity:.4}
+  #lab.quiet .cohBar{opacity:.35}
 
   #strip{width:min(760px,94vw);height:88px;border:1px solid var(--line);border-radius:14px;background:var(--glass)}
 
@@ -135,11 +148,10 @@
     #noteBig{font-size:clamp(4.2rem,7vw,6.4rem)}
     #chakName{font-size:1.5rem}
     #hzTxt{font-size:1.15rem}
-    #centsWrap{width:min(560px,50vw)}
-    #centsTrack{height:6px}
-    #centsTrack::before{top:-5px;height:16px}
-    #centsDot{width:16px;height:16px;top:-5px}
-    #centsLbl{font-size:.74rem;margin-top:8px}
+    .cohBar{width:16px}
+    #cohBarL{left:-76px}
+    #cohBarR{right:-76px}
+    .cohInd{width:26px;height:26px}
     #orb{width:min(500px,52vh)}
     #cohNum{font-size:3.1rem}
     #cohWord{font-size:.78rem}
@@ -265,13 +277,10 @@
     <div id="noteBig">—</div>
     <div id="hzTxt">listening…</div>
   </div>
-  <div id="centsWrap">
-    <div id="centsTrack"><div id="centsDot"></div></div>
-    <div id="centsLbl"><span>−50¢</span><span id="matchTxt"></span><span>+50¢</span></div>
-  </div>
-
   <div id="orbWrap">
     <canvas id="orb"></canvas>
+    <div class="cohBar" id="cohBarL"><div class="cohInd"></div></div>
+    <div class="cohBar" id="cohBarR"><div class="cohInd"></div></div>
     <div id="orbTxt"><div id="cohNum">—</div><div id="cohWord">&nbsp;</div></div>
   </div>
   <button id="dDetails">· details ·</button>
@@ -506,6 +515,7 @@ const $=id=>document.getElementById(id);
 const lab=$('lab'), orb=$('orb'), octx=orb.getContext('2d');
 const strip=$('strip'), sctx=strip.getContext('2d');
 const drawer=$('drawer');
+const cohInds=[...document.querySelectorAll('.cohInd')];
 // chakra colours by pitch class, classic chart: C root red -> B crown purple.
 // Accidentals (in-between hums) blend their neighbours and carry no chakra name.
 const CHAKRAS=[
@@ -534,37 +544,38 @@ function scoreColor(v){
   if(v<70) return '#e0b64f';
   return '#4fd8c4';
 }
-// the living centre: an orb in the note's chakra colour that breathes with the
-// voice; a ring closes around it as coherence rises
+// single-chakra colour lock: the journey's chakra, else the drone target,
+// else the chakra note nearest the voice — one chakra at a time, no blending
+function lockedPC(){
+  if(orbOverride!=null) return orbOverride;
+  if(droneOn) return DRONES[droneIdx]%12;
+  if(eng.voiced) return snapChakra(Math.round(eng.midiC))%12;
+  return null;
+}
+// the eclipse: a black disc with a corona in the locked chakra's colour;
+// the corona subtly expands and brightens as coherence rises
 function drawOrb(){
   const w=orb.width,h=orb.height,c=w/2;
   octx.clearRect(0,0,w,h);
-  const [r,g,b]=noteRGB(orbOverride!=null?orbOverride:(eng.voiced?eng.midiC:null));
+  const pc=lockedPC();
+  const [r,g,b]=noteRGB(pc);
   const coh=clamp(eng.cohShow/100,0,1);
   const breathe=0.5+0.5*Math.sin(performance.now()/1700);
   const lvl=clamp(eng.lvl*7,0,1);
-  const R=w*0.26*(0.9+0.06*breathe)*(1+0.16*(eng.voiced?lvl:0));
-  const A=eng.voiced?0.62+0.38*coh:0.34+0.12*breathe;
-  let gr=octx.createRadialGradient(c,c,0,c,c,R*2.1);
-  gr.addColorStop(0,'rgba('+r+','+g+','+b+','+(0.5*A)+')');
+  const R=w*0.28;
+  const spread=R*(0.12+0.30*coh)*(1+0.05*breathe)*(1+0.06*(eng.voiced?lvl:0));
+  const A=eng.voiced?0.55+0.45*coh:0.3+0.12*breathe;
+  let gr=octx.createRadialGradient(c,c,R*0.9,c,c,R+spread*1.9);
+  gr.addColorStop(0,'rgba('+r+','+g+','+b+','+A+')');
+  gr.addColorStop(0.4,'rgba('+r+','+g+','+b+','+(0.45*A)+')');
   gr.addColorStop(1,'rgba('+r+','+g+','+b+',0)');
   octx.fillStyle=gr; octx.fillRect(0,0,w,h);
-  gr=octx.createRadialGradient(c-R*0.25,c-R*0.3,R*0.1,c,c,R);
-  gr.addColorStop(0,'rgba(255,255,255,'+(0.9*A)+')');
-  gr.addColorStop(0.35,'rgba('+r+','+g+','+b+','+(0.95*A)+')');
-  gr.addColorStop(1,'rgba('+r+','+g+','+b+','+(0.22*A)+')');
-  octx.beginPath(); octx.arc(c,c,R,0,TAU); octx.fillStyle=gr; octx.fill();
-  // crisp rim so the orb reads as a defined body, not just a glow
+  // the black disc
+  octx.beginPath(); octx.arc(c,c,R,0,TAU); octx.fillStyle='#000'; octx.fill();
+  // ring of fire: bright rim right at the disc's edge
   octx.beginPath(); octx.arc(c,c,R,0,TAU);
-  octx.strokeStyle='rgba('+r+','+g+','+b+','+(0.6*A)+')'; octx.lineWidth=1.6*DPR; octx.stroke();
-  if(eng.voiced&&coh>0.02){
-    const a0=-Math.PI/2;
-    octx.lineCap='round';
-    octx.beginPath(); octx.arc(c,c,R*1.45,a0,a0+TAU*coh);
-    octx.strokeStyle='rgba('+r+','+g+','+b+',0.3)'; octx.lineWidth=7*DPR; octx.stroke();
-    octx.beginPath(); octx.arc(c,c,R*1.45,a0,a0+TAU*coh);
-    octx.strokeStyle='rgba('+r+','+g+','+b+',0.95)'; octx.lineWidth=2.2*DPR; octx.stroke();
-  }
+  octx.strokeStyle='rgba('+r+','+g+','+b+','+Math.min(1,0.5+0.5*A)+')';
+  octx.lineWidth=2.2*DPR; octx.stroke();
 }
 function drawStrip(){
   const w=strip.width,h=strip.height;
@@ -606,22 +617,29 @@ function draw(t){
 function updateDOM(){
   lab.classList.toggle('quiet',!eng.voiced);
   if(eng.voiced&&eng.f0>0){
-    const midi=Math.round(eng.midiC);
-    const cents=Math.round((eng.midiC-midi)*100);
-    const pc=pcOf(midi);
+    // one chakra at a time: name the nearest chakra note to the voice
+    const snapped=snapChakra(Math.round(eng.midiC));
+    const pc=snapped%12;
+    // pitch deviation vs the chosen note in the dock, octave-folded so you can
+    // tone the target in whatever octave your voice lives
+    let dev=(eng.midiC-DRONES[droneIdx])*100;
+    dev-=Math.round(dev/1200)*1200;
+    const cents=Math.round(dev);
     $('chakName').textContent=CHAKRAS[pc][1]||' ';
     $('chakName').style.color=CHAKRAS[pc][0];
     $('noteBig').textContent=NOTES[pc];
-    $('hzTxt').textContent=eng.f0.toFixed(1)+' Hz'+(cents ? '  ·  '+(cents>0?'+':'')+cents+'¢' : '  ·  in tune');
-    $('centsDot').style.left=(50+clamp(cents,-50,50))+'%';
-    $('centsDot').style.background=Math.abs(cents)<8?'var(--aqua)':(Math.abs(cents)<25?'var(--gold)':'var(--violet)');
-    if(droneOn){
-      const dm=DRONES[droneIdx];
-      const dc=Math.round((eng.midiC-dm)*100);
-      $('matchTxt').textContent=Math.abs(dc)<=1200?('drone '+(dc>0?'+':'')+dc+'¢'):'';
-    } else $('matchTxt').textContent='';
+    $('hzTxt').textContent=eng.f0.toFixed(1)+' Hz'+(Math.abs(cents)>120?'':(cents?'  ·  '+(cents>0?'+':'')+cents+'¢':'  ·  in tune'));
+    // coherence bars: sharp rises above the green centre, flat sinks below
+    const top=(50-clamp(cents,-60,60)/60*50)+'%';
+    const locked=Math.abs(cents)<=15&&eng.cohShow>=80;
+    cohInds.forEach(ind=>{
+      ind.classList.remove('idle');
+      ind.style.top=top;
+      ind.classList.toggle('locked',locked);
+    });
     $('cohNum').textContent=Math.round(eng.cohShow);
-    const hue=CHAKRAS[orbOverride!=null?orbOverride:pcOf(eng.midiC)][0];
+    const lp=lockedPC();
+    const hue=CHAKRAS[lp!=null?lp:pc][0];
     $('cohNum').style.color=hue;
     $('cohWord').textContent=cohWord(eng.cohShow);
     $('noteBig').style.color=hue;
@@ -640,7 +658,10 @@ function updateDOM(){
     $('noteBig').textContent='—'; $('noteBig').style.color='';
     $('chakName').textContent=' '; $('chakName').style.color='';
     $('hzTxt').textContent=engine.running?'listening…':'mic off';
-    $('matchTxt').textContent='';
+    cohInds.forEach(ind=>{
+      ind.classList.add('idle'); ind.classList.remove('locked');
+      ind.style.top='50%';
+    });
     $('cohNum').textContent=eng.cohShow>1?Math.round(eng.cohShow):'—';
     $('cohNum').style.color='';
     $('cohWord').textContent=engine.running?'resting':'\u00a0';

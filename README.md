@@ -10,6 +10,6 @@ stored, or uploaded.
 
 ## Hosting
 
-This is a single static page (`index.html`) with zero dependencies.
+This is a static page (`index.html` + `vox-engine.js`) with zero dependencies.
 GitHub Pages serves it directly: **Settings → Pages → Deploy from a branch →
 `main` / `(root)`**.

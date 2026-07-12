@@ -9,7 +9,7 @@
 <meta property="og:description" content="Tone the seven chakras with a shruti drone and watch your voice bloom — colour, breath, and resonance, alive in real time.">
 <meta name="theme-color" content="#04070a">
 <title>Vox — Vocal Toning</title>
-<meta name="vox-version" content="0.2.0">
+<meta name="vox-version" content="0.3.0">
 <style>
   :root{
     --void:#04070a; --ink:#d9e6e2; --muted:#6f8580;
@@ -55,8 +55,9 @@
 
   #hero{display:flex;align-items:baseline;gap:1.2rem;margin-top:.4rem}
   #noteBig{font-weight:200;font-size:clamp(3rem,9vw,4.6rem);letter-spacing:.06em;color:var(--aqua-pale);
-    min-width:2ch;text-align:center;line-height:1}
-  #noteBig small{font-size:45%;color:var(--muted)}
+    min-width:1ch;text-align:center;line-height:1}
+  #chakName{font-weight:300;font-size:1rem;letter-spacing:.24em;text-transform:uppercase;
+    color:var(--muted);white-space:nowrap;transition:color .3s}
   #hzTxt{font-size:.85rem;color:var(--muted);letter-spacing:.1em}
   #centsWrap{width:min(320px,72vw);margin-top:.1rem}
   #centsTrack{position:relative;height:4px;background:rgba(79,216,196,.14);border-radius:2px}
@@ -100,8 +101,15 @@
   .ic.active{color:var(--aqua);border-color:var(--aqua-deep);background:rgba(79,216,196,.08)}
   .ic svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
   .sep{width:1px;height:26px;background:var(--line);flex:none}
-  #droneNote{font-size:.72rem;letter-spacing:.1em;color:var(--muted);min-width:4.2ch;text-align:center}
+  #droneNote{display:flex;flex-direction:column;align-items:center;line-height:1.2;
+    color:var(--muted);min-width:5.5ch;text-align:center}
+  #droneNote b{font-weight:400;font-size:.92rem;letter-spacing:.06em}
+  #droneNote span{font-size:.5rem;letter-spacing:.12em;text-transform:uppercase;opacity:.85;white-space:nowrap}
   #droneNote.on{color:var(--gold)}
+  #octCtl{display:flex;align-items:center;border:1px solid var(--line);border-radius:9px;padding:0 2px;flex:none}
+  #octCtl .nbtn{width:20px;height:30px;font-size:.85rem}
+  #dOctLbl{font-size:.56rem;letter-spacing:.12em;color:var(--muted);text-transform:uppercase;
+    min-width:4.6ch;text-align:center}
   .nbtn{width:26px;height:32px;font-size:1rem;color:var(--muted);background:none;border:none;cursor:pointer}
   .nbtn:hover{color:var(--aqua)}
   #dTune{font-size:.6rem;letter-spacing:.08em;color:var(--muted);background:none;border:1px solid var(--line);
@@ -112,6 +120,10 @@
     .ic{width:36px;height:36px}
     #dEnd{padding:.45rem .55rem;font-size:.58rem;letter-spacing:.08em}
     .nbtn{width:22px}
+    #octCtl .nbtn{width:16px}
+    #dOctLbl{min-width:3.6ch}
+    #droneNote{min-width:4.5ch}
+    #droneNote span{font-size:.44rem}
   }
   #dEnd{font-size:.66rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);background:none;
     border:1px solid var(--line);border-radius:10px;padding:.55rem .8rem;cursor:pointer;transition:.15s;flex:none}
@@ -121,6 +133,7 @@
   @media (min-width:1100px) and (min-height:640px){
     #lab{justify-content:safe center;gap:1.3rem;padding:70px 4vw 140px}
     #noteBig{font-size:clamp(4.2rem,7vw,6.4rem)}
+    #chakName{font-size:1.5rem}
     #hzTxt{font-size:1.15rem}
     #centsWrap{width:min(560px,50vw)}
     #centsTrack{height:6px}
@@ -141,7 +154,12 @@
     .ic{width:54px;height:54px;border-radius:14px}
     .ic svg{width:27px;height:27px}
     .sep{height:34px}
-    #droneNote{font-size:.95rem;min-width:4.4ch}
+    #droneNote{min-width:7ch}
+    #droneNote b{font-size:1.15rem}
+    #droneNote span{font-size:.62rem}
+    #octCtl{border-radius:11px;padding:0 4px}
+    #octCtl .nbtn{width:28px;height:40px;font-size:1.05rem}
+    #dOctLbl{font-size:.7rem}
     .nbtn{width:34px;height:42px;font-size:1.3rem}
     #dTune{font-size:.78rem;padding:.5rem .7rem;border-radius:10px}
     #dEnd{font-size:.84rem;padding:.72rem 1.1rem;border-radius:12px}
@@ -243,7 +261,8 @@
     <button id="jEnd" title="End journey" aria-label="End journey">✕</button>
   </div>
   <div id="hero">
-    <div id="noteBig">—<small id="noteOct"></small></div>
+    <div id="chakName">&nbsp;</div>
+    <div id="noteBig">—</div>
     <div id="hzTxt">listening…</div>
   </div>
   <div id="centsWrap">
@@ -282,8 +301,13 @@
     <svg viewBox="0 0 24 24"><path d="M12 3v10"/><path d="M9 3h6"/><circle cx="12" cy="17" r="4"/></svg>
   </button>
   <button class="nbtn" id="dNoteDn" aria-label="Drone note down">−</button>
-  <div id="droneNote">A3</div>
+  <div id="droneNote"><b id="dnNote">A</b><span id="dnChak">Third Eye</span></div>
   <button class="nbtn" id="dNoteUp" aria-label="Drone note up">+</button>
+  <div id="octCtl" title="Octave">
+    <button class="nbtn" id="dOctDn" aria-label="Octave down">▾</button>
+    <span id="dOctLbl">oct 3</span>
+    <button class="nbtn" id="dOctUp" aria-label="Octave up">▴</button>
+  </div>
   <button id="dTune" title="Concert pitch — tap to switch">A=432</button>
   <div class="sep"></div>
   <button class="ic" id="dJourney" title="Chakra journey" aria-label="Chakra journey">
@@ -395,9 +419,14 @@ async function useMic(){
 function stopMic(){ engine.stop(); syncUI(); }
 
 // ---------- reference drone ----------
-const DRONES=[];   // C2..C6
-for(let m=36;m<=84;m++) DRONES.push(m);
-let droneIdx=(homeNote||57)-36;           // your found note, else A3 (midi 57)
+// chakra notes only: the seven naturals (C major, root -> crown), C2..C6
+const CHAKRA_PCS=[0,2,4,5,7,9,11];
+const snapChakra=m=>{ m=clamp(Math.round(m),36,84); while(CHAKRA_PCS.indexOf(m%12)<0) m--; return m; };
+const DRONES=[];
+for(let m=36;m<=84;m++){ if(CHAKRA_PCS.indexOf(m%12)>=0) DRONES.push(m); }
+if(homeNote) homeNote=snapChakra(homeNote);      // legacy saved notes may be accidentals
+let droneIdx=DRONES.indexOf(snapChakra(homeNote||57));   // your found note, else A3
+const setDroneMidi=m=>{ droneIdx=DRONES.indexOf(snapChakra(m)); };
 let droneNodes=null, droneOn=false, shrutiPW=null;
 // midiHz / midiName come from the engine setup at the top of this script.
 // shruti-box voice: free-reed spectrum — strong low harmonics, a gentle mid bump,
@@ -462,6 +491,10 @@ function droneStep(d){
   droneIdx=clamp(droneIdx+d,0,DRONES.length-1);
   if(droneOn) droneSet(true); else syncUI();
 }
+function droneOct(d){
+  setDroneMidi(DRONES[droneIdx]+12*d);
+  if(droneOn) droneSet(true); else syncUI();
+}
 
 /* The engine state, F0 tracking, tone segmentation and per-frame analysis
    now live in vox-engine.js. This page reads the live `eng` state (aliased
@@ -473,13 +506,18 @@ const $=id=>document.getElementById(id);
 const lab=$('lab'), orb=$('orb'), octx=orb.getContext('2d');
 const strip=$('strip'), sctx=strip.getContext('2d');
 const drawer=$('drawer');
-// chakra colours by pitch class, C root -> B crown; accidentals blend neighbours
+// chakra colours by pitch class, classic chart: C root red -> B crown purple.
+// Accidentals (in-between hums) blend their neighbours and carry no chakra name.
 const CHAKRAS=[
-  ['#e05245','root'],['#e86e40','root'],['#f08c3a','sacral'],['#eeaf44','sacral'],
-  ['#ecd24f','solar plexus'],['#58c98a','heart'],['#53b8b1','heart'],['#4fa8d8','throat'],
-  ['#5f8ed8','throat'],['#6f74d8','third eye'],['#8b71d8','third eye'],['#a86fd8','crown'],
+  ['#e02f3c','Root'],['#eb5a2f',''],['#f57f22','Sacral'],['#f8a622',''],
+  ['#f8cd22','Solar Plexus'],['#2ab86b','Heart'],['#30bfa8',''],['#35c4e2','Throat'],
+  ['#3786e2',''],['#3948e1','Third Eye'],['#6440e3',''],['#9038e5','Crown'],
 ];
 const pcOf=m=>((Math.round(m)%12)+12)%12;
+// chakra-first naming: "Heart F"; accidentals fall back to the bare note letter
+const dispName=m=>{const pc=pcOf(m);return CHAKRAS[pc][1]?CHAKRAS[pc][1]+' '+NOTES[pc]:NOTES[pc];};
+const noteDisp=s=>{const L=String(s).replace(/-?\d+$/,'');const pc=NOTES.indexOf(L);
+  return pc>=0&&CHAKRAS[pc][1]?CHAKRAS[pc][1]+' '+L:L;};
 function noteRGB(midiC){
   if(midiC==null) return [79,216,196];
   const h=CHAKRAS[pcOf(midiC)][0];
@@ -570,8 +608,10 @@ function updateDOM(){
   if(eng.voiced&&eng.f0>0){
     const midi=Math.round(eng.midiC);
     const cents=Math.round((eng.midiC-midi)*100);
-    $('noteBig').firstChild.textContent=NOTES[((midi%12)+12)%12];
-    $('noteOct').textContent=Math.floor(midi/12)-1;
+    const pc=pcOf(midi);
+    $('chakName').textContent=CHAKRAS[pc][1]||' ';
+    $('chakName').style.color=CHAKRAS[pc][0];
+    $('noteBig').textContent=NOTES[pc];
     $('hzTxt').textContent=eng.f0.toFixed(1)+' Hz'+(cents ? '  ·  '+(cents>0?'+':'')+cents+'¢' : '  ·  in tune');
     $('centsDot').style.left=(50+clamp(cents,-50,50))+'%';
     $('centsDot').style.background=Math.abs(cents)<8?'var(--aqua)':(Math.abs(cents)<25?'var(--gold)':'var(--violet)');
@@ -597,8 +637,8 @@ function updateDOM(){
     $('tRes').innerHTML='<b>'+eng.vowel+'</b>';
     $('tResS').textContent=eng.f1&&eng.f2?Math.round(eng.f1)+' · '+Math.round(eng.f2)+' Hz':'F1 · F2';
   } else {
-    $('noteBig').firstChild.textContent='—'; $('noteOct').textContent='';
-    $('noteBig').style.color='';
+    $('noteBig').textContent='—'; $('noteBig').style.color='';
+    $('chakName').textContent=' '; $('chakName').style.color='';
     $('hzTxt').textContent=engine.running?'listening…':'mic off';
     $('matchTxt').textContent='';
     $('cohNum').textContent=eng.cohShow>1?Math.round(eng.cohShow):'—';
@@ -625,7 +665,7 @@ function endSession(){
   $('sTableWrap').hidden=!T.length; $('sNoTones').hidden=!!T.length;
   T.forEach((t,i)=>{
     const tr=document.createElement('tr');
-    tr.innerHTML='<td>'+(i+1)+'</td><td>'+t.note+'</td><td>'+t.dur.toFixed(1)+'s</td>'+
+    tr.innerHTML='<td>'+(i+1)+'</td><td>'+noteDisp(t.note)+'</td><td>'+t.dur.toFixed(1)+'s</td>'+
       '<td><b>'+Math.round(t.coh)+'</b></td><td>±'+t.stab.toFixed(0)+'¢</td>'+
       '<td>'+t.hnr.toFixed(0)+'dB</td><td>'+(t.jit*100).toFixed(2)+'%</td>';
     tb.appendChild(tr);
@@ -677,7 +717,7 @@ function closeSummary(){
    your tone: the note where the voice settles most naturally. */
 const SCALE=[0,2,4,5,7,9,11,12];
 let quizRoot=48;
-try{ const r=parseInt(localStorage.getItem('voxRoot')); if([48,53,60].includes(r)) quizRoot=r; }catch(e){}
+try{ const r=parseInt(localStorage.getItem('voxRoot')); if([48,60].includes(r)) quizRoot=r; }catch(e){}
 const quiz={active:false,step:-1,voicedMs:0,silentMs:0,doneMs:0,lastT:0,uiT:0,notes:[],hold:null,scores:[]};
 const qName=i=>i===0?'setup':i===1?'warmup':(i>=2&&i<10?'hold':null);
 
@@ -715,17 +755,17 @@ function qGo(i){
     $('qNote').textContent='—'; $('qSub').textContent='';
     $('qNext').textContent='Begin'; $('qNext').style.visibility='hidden';
     const ch=$('qChips'); ch.hidden=false; ch.innerHTML='';
-    [['Low',48],['Middle',53],['High',60]].forEach(([nm,root])=>{
+    [['Low',48,'deeper voices'],['High',60,'brighter voices']].forEach(([nm,root,who])=>{
       const b=document.createElement('button');
       b.className='qchip';
       b.style.cursor='pointer'; b.style.font='inherit';
-      b.innerHTML=nm+' <b>from '+midiName(root)+'</b>';
+      b.innerHTML=nm+' <b>'+who+'</b>';
       b.onclick=()=>{
         quizRoot=root; quiz.notes=SCALE.map(o=>root+o);
         try{ localStorage.setItem('voxRoot',root); }catch(e){}
         [...ch.children].forEach(c=>c.classList.toggle('best',c===b));
-        droneIdx=root-36; droneSet(true);        // hear the range before choosing
-        $('qSub').textContent='sounding '+midiName(root)+' — choose, or tap another';
+        setDroneMidi(root); droneSet(true);      // hear the range before choosing
+        $('qSub').textContent='sounding the '+nm.toLowerCase()+' root — choose, or tap another';
         $('qNext').style.visibility='';
       };
       ch.appendChild(b);
@@ -735,10 +775,10 @@ function qGo(i){
     $('qText').textContent='Any note, soft as a sigh, lips gently closed. Watch Vox name it — then we\u2019ll climb the scale together.';
   } else {
     const ci=i-2, m=quiz.notes[ci];
-    $('qTitle').textContent=midiName(m)+' · '+CHAKRAS[pcOf(m)][1]+' — '+(ci+1)+' of 8';
+    $('qTitle').textContent=dispName(m)+' — '+(ci+1)+' of 8';
     $('qText').textContent='Let the drone sound for a breath, then join it — one easy, steady tone. No reaching; just settle in and let it ring.';
     quiz.hold={m,coh:0,n:0,pitch:[],t0:performance.now(),retried:false};
-    droneIdx=m-36; droneSet(true);
+    setDroneMidi(m); droneSet(true);
   }
 }
 function quizTick(){
@@ -751,7 +791,7 @@ function quizTick(){
     quiz.uiT=now;
     if(singing){
       const midi=Math.round(eng.midiC);
-      $('qNote').innerHTML=NOTES[pcOf(midi)]+'<small>'+(Math.floor(midi/12)-1)+'</small>';
+      $('qNote').innerHTML=(CHAKRAS[pcOf(midi)][1]?'<small>'+CHAKRAS[pcOf(midi)][1]+'</small> ':'')+NOTES[pcOf(midi)];
       $('qNote').style.color=CHAKRAS[pcOf(midi)][0];
       $('qSub').textContent=eng.f0.toFixed(1)+' Hz';
     } else {
@@ -787,13 +827,13 @@ function qResult(){
   const pool=quiz.scores.filter(s=>!s.off);
   const sc=(pool.length?pool:quiz.scores).slice().sort((a,b)=>b.coh-a.coh);
   const best=sc[0];
-  homeNote=best.m; droneIdx=homeNote-36;
+  homeNote=best.m; setDroneMidi(homeNote);
   try{ localStorage.setItem('voxHomeNote',homeNote); }catch(e){}
   [...$('qDots').children].forEach(d=>d.classList.add('on'));
-  $('qTitle').textContent='Your tone: '+midiName(best.m)+' · '+CHAKRAS[pcOf(best.m)][1];
-  const rest=sc.slice(1,3).filter(s=>s.coh>0).map(s=>midiName(s.m)+' ('+Math.round(s.coh)+')').join(' and ');
-  $('qText').textContent='Climbing from '+midiName(quiz.notes[0])+', your voice settled most naturally on '+midiName(best.m)+' — '+midiHz(best.m).toFixed(1)+' Hz, scoring '+Math.round(best.coh)+(rest?', with '+rest+' close behind':'')+'. The shruti drone now greets you there.';
-  $('qNote').innerHTML=NOTES[pcOf(best.m)]+'<small>'+(Math.floor(best.m/12)-1)+'</small>';
+  $('qTitle').textContent='Your tone: '+dispName(best.m);
+  const rest=sc.slice(1,3).filter(s=>s.coh>0).map(s=>dispName(s.m)+' ('+Math.round(s.coh)+')').join(' and ');
+  $('qText').textContent='Climbing from the '+dispName(quiz.notes[0])+', your voice settled most naturally on '+dispName(best.m)+' — '+midiHz(best.m).toFixed(1)+' Hz, scoring '+Math.round(best.coh)+(rest?', with '+rest+' close behind':'')+'. The shruti drone now greets you there.';
+  $('qNote').innerHTML='<small>'+CHAKRAS[pcOf(best.m)][1]+'</small> '+NOTES[pcOf(best.m)];
   $('qNote').style.color=CHAKRAS[pcOf(best.m)][0];
   $('qSub').textContent='';
   const ch=$('qChips'); ch.hidden=false; ch.innerHTML='';
@@ -801,7 +841,7 @@ function qResult(){
     const d=document.createElement('div');
     d.className='qchip'+(s.m===best.m?' best':'');
     if(!s.off) d.style.borderColor=CHAKRAS[pcOf(s.m)][0]+'55';
-    d.innerHTML='<span style="color:'+CHAKRAS[pcOf(s.m)][0]+'">'+midiName(s.m)+'</span> <b>'+(s.off?'—':Math.round(s.coh))+'</b>';
+    d.innerHTML='<span style="color:'+CHAKRAS[pcOf(s.m)][0]+'">'+NOTES[pcOf(s.m)]+'</span> <b>'+(s.off?'—':Math.round(s.coh))+'</b>';
     ch.appendChild(d);
   });
   $('qFill').style.width='100%';
@@ -852,7 +892,7 @@ function jrOct(){
   $('qSkip').style.visibility=''; $('qSkip').textContent='Close';
   $('qNext').style.visibility='hidden';
   const ch=$('qChips'); ch.hidden=false; ch.innerHTML=''; ch.style.flexDirection='';
-  [['Deep',48,'C3 – B3'],['Bright',60,'C4 – B4']].forEach(([nm,base,rng])=>{
+  [['Deep',48,'low octave'],['Bright',60,'high octave']].forEach(([nm,base,rng])=>{
     const b=document.createElement('button');
     b.className='qchip'; b.style.cursor='pointer'; b.style.font='inherit';
     b.innerHTML=nm+' <b>'+rng+'</b>';
@@ -872,13 +912,13 @@ function jrPick(){
   [...CHAKRA_SEQ].map((c,i)=>[c,i]).reverse().forEach(([[pc,en,sk],i])=>{   // crown on top
     const b=document.createElement('button');
     b.className='qchip'; b.style.cursor='pointer'; b.style.font='inherit';
-    b.innerHTML='<span style="color:'+CHAKRAS[pc][0]+'">●</span>&nbsp; '+sk+' — '+en+' <b>'+midiName(chakraOct+pc)+'</b>';
+    b.innerHTML='<span style="color:'+CHAKRAS[pc][0]+'">●</span>&nbsp; '+sk+' — '+en+' <b>'+NOTES[pc]+'</b>';
     b.onclick=()=>journeyStart('single',i);
     ch.appendChild(b);
   });
   const oc=document.createElement('button');
   oc.className='qchip'; oc.style.cursor='pointer'; oc.style.font='inherit'; oc.style.opacity='.7';
-  oc.innerHTML='voice: <b>'+(chakraOct===48?'deep (C3)':'bright (C4)')+'</b> · tap to change';
+  oc.innerHTML='voice: <b>'+(chakraOct===48?'deep':'bright')+'</b> · tap to change';
   oc.onclick=()=>{ chakraOct=chakraOct===48?60:48; try{localStorage.setItem('voxChakraOct',chakraOct);}catch(e){} jrPick(); };
   ch.appendChild(oc);
 }
@@ -893,9 +933,9 @@ function jrTone(){
   jr.phase='tone'; jr.t0=performance.now(); jr.acc=0; jr.n=0;
   const [pc,en,sk]=CHAKRA_SEQ[jr.idx];
   orbOverride=pc;
-  droneIdx=chakraOct+pc-36; droneSet(true);
+  setDroneMidi(chakraOct+pc); droneSet(true);
   $('jDot').style.background=CHAKRAS[pc][0]; $('jDot').style.color=CHAKRAS[pc][0];
-  $('jName').textContent=sk+' — '+en+' · '+midiName(chakraOct+pc);
+  $('jName').textContent=sk+' — '+en+' · '+NOTES[pc];
   $('jSub2').textContent=jr.mode==='full'?('centre '+(jr.idx+1)+' of 7'):'tone as long as you like';
 }
 function jrRecord(){
@@ -972,7 +1012,11 @@ function reveal(){ veil.classList.add('gone'); lab.classList.remove('hide'); doc
 function syncUI(){
   $('dMic').classList.toggle('active',engine.running);
   $('dDrone').classList.toggle('active',droneOn);
-  const dn=$('droneNote'); dn.textContent=midiName(DRONES[droneIdx]); dn.classList.toggle('on',droneOn);
+  const dm=DRONES[droneIdx];
+  $('dnNote').textContent=NOTES[dm%12];
+  $('dnChak').textContent=CHAKRAS[dm%12][1];
+  $('dOctLbl').textContent='oct '+(Math.floor(dm/12)-1);
+  $('droneNote').classList.toggle('on',droneOn);
   $('dTune').textContent='A='+engine.tuneA;
 }
 function tuneToggle(){
@@ -986,7 +1030,7 @@ function veilRefresh(){
   // fixed labels; once a home note is known the lab becomes the primary path
   if(homeNote){
     vm.classList.add('solid'); vq.classList.remove('solid');
-    vm.textContent='Vocal Lab · '+midiName(homeNote);
+    vm.textContent='Vocal Lab · '+dispName(homeNote);
   } else {
     vq.classList.add('solid'); vm.classList.remove('solid');
     vm.textContent='Vocal Lab';
@@ -1028,6 +1072,8 @@ $('dMic').onclick=useMic;
 $('dDrone').onclick=()=>droneSet(!droneOn);
 $('dNoteDn').onclick=()=>droneStep(-1);
 $('dNoteUp').onclick=()=>droneStep(1);
+$('dOctDn').onclick=()=>droneOct(-1);
+$('dOctUp').onclick=()=>droneOct(1);
 $('dTune').onclick=tuneToggle;
 $('dEnd').onclick=endSession;
 $('sSave').onclick=saveSession;

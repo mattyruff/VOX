@@ -9,7 +9,7 @@
 <meta property="og:description" content="Tone the seven chakras with a shruti drone and watch your voice bloom — colour, breath, and resonance, alive in real time.">
 <meta name="theme-color" content="#04070a">
 <title>Vox — Vocal Toning</title>
-<meta name="vox-version" content="0.5.0">
+<meta name="vox-version" content="0.6.0">
 <style>
   :root{
     --void:#04070a; --ink:#d9e6e2; --muted:#6f8580;
@@ -60,22 +60,32 @@
   #chakName{font-weight:300;font-size:1rem;letter-spacing:.24em;text-transform:uppercase;
     color:var(--muted);white-space:nowrap;transition:color .3s}
   #hzTxt{font-size:.85rem;color:var(--muted);letter-spacing:.1em}
-  /* coherence bars: vertical pitch meters flanking the orb — green centre
-     (in tune), through yellow to red at the sharp (top) and flat (bottom) edges */
+  /* coherence bars: vertical pitch meters flanking the orb — green home in the
+     middle (in tune + coherent), yellow settling zones at the sharp (top) and
+     flat (bottom) ends. 30 / 40 / 30. */
   .cohBar{position:absolute;top:50%;transform:translateY(-50%);
     width:12px;height:62%;border-radius:999px;
     background:linear-gradient(to bottom,
-      #e0303c 0%, #f8a622 22%, #f8cd22 34%, #2ab86b 44%, #2ab86b 56%,
-      #f8cd22 66%, #f8a622 78%, #e0303c 100%);
+      #f8cd22 0%, #f8cd22 30%, #2ab86b 30%, #2ab86b 70%,
+      #f8cd22 70%, #f8cd22 100%);
     box-shadow:0 0 14px rgba(0,0,0,.5), inset 0 0 3px rgba(0,0,0,.35);
     opacity:.9;transition:opacity .4s}
   #cohBarL{left:-46px}
   #cohBarR{right:-46px}
-  .cohInd{position:absolute;left:50%;top:50%;width:20px;height:20px;border-radius:50%;
-    transform:translate(-50%,-50%);background:rgba(255,255,255,.92);
-    border:2px solid rgba(4,7,10,.85);box-shadow:0 0 8px rgba(0,0,0,.6);
-    transition:top .12s linear, background .25s, box-shadow .25s}
-  .cohInd.locked{background:#2ab86b;box-shadow:0 0 14px 2px rgba(42,184,107,.8)}
+  /* the indicator: a chevron that points toward the green — sharp points down,
+     flat points up — and melts into a glowing dot once the tone settles */
+  .cohInd{position:absolute;left:50%;top:50%;width:23px;height:23px;
+    transform:translate(-50%,-50%);color:rgba(255,255,255,.95);
+    filter:drop-shadow(0 1px 4px rgba(0,0,0,.75));
+    transition:top .16s linear, color .3s, filter .3s, opacity .4s}
+  .cohInd svg{width:100%;height:100%;display:block;transition:transform .35s ease}
+  .cohInd .chev{fill:none;stroke:currentColor;stroke-width:3.6;stroke-linecap:round;
+    stroke-linejoin:round;transition:opacity .25s}
+  .cohInd .dotc{fill:#2ab86b;opacity:0;transition:opacity .25s}
+  .cohInd.up svg{transform:rotate(180deg)}
+  .cohInd.locked .chev{opacity:0}
+  .cohInd.locked .dotc{opacity:1}
+  .cohInd.locked{color:#2ab86b;filter:drop-shadow(0 0 9px rgba(42,184,107,.95))}
   .cohInd.idle{opacity:.3}
 
   #orbWrap{position:relative;display:flex;flex-direction:column;align-items:center;gap:.35rem;margin:.1rem 0}
@@ -151,7 +161,7 @@
     .cohBar{width:16px}
     #cohBarL{left:-76px}
     #cohBarR{right:-76px}
-    .cohInd{width:26px;height:26px}
+    .cohInd{width:30px;height:30px}
     #orb{width:min(500px,52vh)}
     #cohNum{font-size:3.1rem}
     #cohWord{font-size:.78rem}
@@ -295,8 +305,8 @@
   </div>
   <div id="orbWrap">
     <canvas id="orb"></canvas>
-    <div class="cohBar" id="cohBarL"><div class="cohInd"></div></div>
-    <div class="cohBar" id="cohBarR"><div class="cohInd"></div></div>
+    <div class="cohBar" id="cohBarL"><div class="cohInd"><svg viewBox="0 0 24 24"><path class="chev" d="M6 9l6 6 6-6"/><circle class="dotc" cx="12" cy="12" r="6.5"/></svg></div></div>
+    <div class="cohBar" id="cohBarR"><div class="cohInd"><svg viewBox="0 0 24 24"><path class="chev" d="M6 9l6 6 6-6"/><circle class="dotc" cx="12" cy="12" r="6.5"/></svg></div></div>
     <div id="orbTxt"><div id="cohNum">—</div><div id="cohWord">&nbsp;</div></div>
   </div>
   <button id="dDetails">· details ·</button>
@@ -541,6 +551,7 @@ const lab=$('lab'), orb=$('orb'), octx=orb.getContext('2d');
 const strip=$('strip'), sctx=strip.getContext('2d');
 const drawer=$('drawer');
 const cohInds=[...document.querySelectorAll('.cohInd')];
+let barPos=50;                 // indicator position, damped like a spirit-level bubble
 // chakra colours by pitch class, classic chart: C root red -> B crown purple.
 // Accidentals (in-between hums) blend their neighbours and carry no chakra name.
 const CHAKRAS=[
@@ -654,13 +665,18 @@ function updateDOM(){
     $('chakName').style.color=CHAKRAS[pc][0];
     $('noteBig').textContent=NOTES[pc];
     $('hzTxt').textContent=eng.f0.toFixed(1)+' Hz'+(Math.abs(cents)>120?'':(cents?'  ·  '+(cents>0?'+':'')+cents+'¢':'  ·  in tune'));
-    // coherence bars: sharp rises above the green centre, flat sinks below
-    const top=(50-clamp(cents,-60,60)/60*50)+'%';
-    const locked=Math.abs(cents)<=15&&eng.cohShow>=80;
+    // coherence bars: the chevron drifts like a spirit-level bubble — sharp above
+    // centre pointing down, flat below pointing up. A coherent voice (70+) is held
+    // within the green band; settling within 15 cents melts it into the glow dot.
+    let target=50-clamp(cents,-60,60)/60*50;
+    if(eng.cohShow>=70) target=clamp(target,32,68);
+    barPos+=(target-barPos)*0.28;
+    const locked=Math.abs(cents)<=15&&eng.cohShow>=70;
     cohInds.forEach(ind=>{
       ind.classList.remove('idle');
-      ind.style.top=top;
+      ind.style.top=barPos.toFixed(1)+'%';
       ind.classList.toggle('locked',locked);
+      ind.classList.toggle('up',cents<0);
     });
     $('cohNum').textContent=Math.round(eng.cohShow);
     const lp=lockedPC();
@@ -683,9 +699,10 @@ function updateDOM(){
     $('noteBig').textContent='—'; $('noteBig').style.color='';
     $('chakName').textContent=' '; $('chakName').style.color='';
     $('hzTxt').textContent=engine.running?'listening…':'mic off';
+    barPos+=(50-barPos)*0.2;                 // bubble settles home
     cohInds.forEach(ind=>{
-      ind.classList.add('idle'); ind.classList.remove('locked');
-      ind.style.top='50%';
+      ind.classList.add('idle'); ind.classList.remove('locked','up');
+      ind.style.top=barPos.toFixed(1)+'%';
     });
     $('cohNum').textContent=eng.cohShow>1?Math.round(eng.cohShow):'—';
     $('cohNum').style.color='';
@@ -906,8 +923,8 @@ const CHAKRA_SEQ=[
   [5,'Heart','Anahata'],[7,'Throat','Vishuddha'],[9,'Third Eye','Ajna'],[11,'Crown','Sahasrara'],
 ];
 // phase: 'ready' (drone off, waiting for play) | 'run' (droning, counting hums)
-// | 'done' (3rd hum credited, advancing). hums: credited tones this chakra.
-const jr={active:false,mode:'',idx:0,phase:'ready',hums:0,humDone:false,acc:0,n:0,scores:[],ui:''};
+// | 'done' (3rd tone credited; doneStep 'toning' -> 'still' winds the centre down).
+const jr={active:false,mode:'',idx:0,phase:'ready',hums:0,humDone:false,doneStep:'',doneT:0,acc:0,n:0,scores:[],ui:''};
 let ovlMode='quiz';
 
 function chime(m){                       // soft bell in the incoming chakra's pitch
@@ -1046,22 +1063,42 @@ function jrAbort(){
   syncUI();
 }
 function jrTick(){
+  if(jr.phase==='done'){ jrDoneTick(); return; }  // centre complete: gentle wind-down
   if(jr.phase!=='run') return;                    // paused / waiting: nothing counts
   const HUM=window.__jrFast?1.5:5;                // seconds a tone must hold
   if(eng.voiced){ jr.acc+=eng.coh; jr.n++; }
   if(eng.voiced&&!jr.humDone&&eng.breath>=HUM){
     jr.humDone=true; jr.hums++;                   // one credit per continuous tone
     jrHumDots();
-    if(jr.hums>=3){                               // centre complete
-      jr.phase='done';
-      jrSub('beautiful');
-      setTimeout(()=>{ if(jr.active) jrNext(); },900);
+    if(jr.hums>=3){                               // third tone: drone stays with the voice
+      jr.phase='done'; jr.doneStep='toning'; jr.doneT=performance.now();
+      jrSub('beautiful — let it fade');
       return;
     }
     jrSub('release, breathe, and sound again');
   }
   if(!eng.voiced&&jr.humDone) jr.humDone=false;   // silence re-arms the next tone
   jrProgress();
+}
+// after the third tone: drone holds while the voice does; 3s of silence stops the
+// drone; 3s of stillness later the bell initiates the next centre (never auto-playing)
+function jrDoneTick(){
+  const W=window.__jrFast?1000:3000;
+  const now=performance.now();
+  if(jr.doneStep==='toning'){
+    if(eng.voiced){ jr.acc+=eng.coh; jr.n++; jr.doneT=now; return; }
+    if(now-jr.doneT>=W){
+      droneSet(false);
+      jr.doneStep='still'; jr.doneT=now;
+      jrSub('a still breath');
+    }
+  } else if(jr.doneStep==='still'&&now-jr.doneT>=W){
+    jrRecord();
+    if(jr.idx>=6||jr.mode!=='full'){ jrComplete(false); return; }
+    jr.idx++;
+    chime(chakraOct+CHAKRA_SEQ[jr.idx][0]);
+    jrEnter();
+  }
 }
 let jrUiT=0;
 function jrProgress(){
@@ -1128,7 +1165,7 @@ $('vJourney').onclick=jrEntry;
 $('dJourney').onclick=jrEntry;
 $('jPlay').onclick=jrPlayToggle;
 $('jOct').onclick=()=>{ if(jr.active) jrOctCycle(); };
-$('jNext').onclick=()=>{ if(jr.active&&jr.phase!=='done') jrNext(); };
+$('jNext').onclick=()=>{ if(jr.active) jrNext(); };   // also shortcuts the wind-down
 $('jEnd').onclick=()=>{
   if(!jr.active) return;
   if(jr.n>0) jrRecord();

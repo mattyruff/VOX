@@ -9,7 +9,7 @@
 <meta property="og:description" content="Tone the seven chakras with a shruti drone and watch your voice bloom — colour, breath, and resonance, alive in real time.">
 <meta name="theme-color" content="#04070a">
 <title>Vox — Vocal Toning</title>
-<meta name="vox-version" content="0.6.0">
+<meta name="vox-version" content="0.6.1">
 <style>
   :root{
     --void:#04070a; --ink:#d9e6e2; --muted:#6f8580;
@@ -85,7 +85,14 @@
   .cohInd.up svg{transform:rotate(180deg)}
   .cohInd.locked .chev{opacity:0}
   .cohInd.locked .dotc{opacity:1}
-  .cohInd.locked{color:#2ab86b;filter:drop-shadow(0 0 9px rgba(42,184,107,.95))}
+  .cohInd.locked{color:#2ab86b;animation:lockGlow 1.6s ease-in-out infinite}
+  @keyframes lockGlow{
+    0%,100%{filter:drop-shadow(0 0 6px rgba(42,184,107,1)) drop-shadow(0 0 14px rgba(42,184,107,.7))}
+    50%{filter:drop-shadow(0 0 10px rgba(42,184,107,1)) drop-shadow(0 0 26px rgba(42,184,107,.95))}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .cohInd.locked{animation:none;filter:drop-shadow(0 0 10px rgba(42,184,107,1)) drop-shadow(0 0 20px rgba(42,184,107,.85))}
+  }
   .cohInd.idle{opacity:.3}
 
   #orbWrap{position:relative;display:flex;flex-direction:column;align-items:center;gap:.35rem;margin:.1rem 0}
@@ -361,7 +368,7 @@
 <div id="jDock" class="hide">
   <button class="jbtn" id="jPlay" aria-label="Start">
     <svg id="jPlayIco" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-    <svg id="jPauseIco" viewBox="0 0 24 24" hidden><path d="M7 5h4v14H7z M13 5h4v14h-4z"/></svg>
+    <svg id="jPauseIco" viewBox="0 0 24 24" style="display:none"><path d="M7 5h4v14H7z M13 5h4v14h-4z"/></svg>
   </button>
   <button class="jbtn" id="jOct">OCTAVE 3</button>
   <button class="jbtn" id="jNext">NEXT</button>
@@ -664,7 +671,7 @@ function updateDOM(){
     $('chakName').textContent=CHAKRAS[pc][1]||' ';
     $('chakName').style.color=CHAKRAS[pc][0];
     $('noteBig').textContent=NOTES[pc];
-    $('hzTxt').textContent=eng.f0.toFixed(1)+' Hz'+(Math.abs(cents)>120?'':(cents?'  ·  '+(cents>0?'+':'')+cents+'¢':'  ·  in tune'));
+    $('hzTxt').textContent=eng.f0.toFixed(1)+' Hz'+(jr.active?'':(Math.abs(cents)>120?'':(cents?'  ·  '+(cents>0?'+':'')+cents+'¢':'  ·  in tune')));
     // coherence bars: the chevron drifts like a spirit-level bubble — sharp above
     // centre pointing down, flat below pointing up. A coherent voice (70+) is held
     // within the green band; settling within 15 cents melts it into the glow dot.
@@ -970,6 +977,7 @@ function journeyStart(mode2,idx){
   $('quiz').classList.add('hide');
   $('jBanner').classList.remove('hide');
   dock.classList.add('hide'); $('jDock').classList.remove('hide');
+  drawer.classList.add('closed'); $('dDetails').style.display='none';   // journey is minimal
   $('jOct').textContent='OCTAVE '+(Math.floor(chakraOct/12)-1);
   jrEnter();
 }
@@ -985,7 +993,7 @@ function jrEnter(){
   jrHumDots(); jrPlayUI(); jrSub('press play to begin');
 }
 function jrSub(tail){
-  $('jSub2').textContent=(jr.mode==='full'?('centre '+(jr.idx+1)+' of 7 · '):'')+tail;
+  $('jSub2').textContent=tail;   // guidance only — no centre count
 }
 function jrHumDots(){
   const col=CHAKRAS[CHAKRA_SEQ[jr.idx][0]][0];
@@ -996,7 +1004,9 @@ function jrHumDots(){
 }
 function jrPlayUI(){
   const run=jr.phase==='run';
-  $('jPlayIco').hidden=run; $('jPauseIco').hidden=!run;
+  // SVG elements ignore the HTML `hidden` property — toggle display directly
+  $('jPlayIco').style.display=run?'none':'';
+  $('jPauseIco').style.display=run?'':'none';
   $('jPlay').setAttribute('aria-label',run?'Pause':'Start');
 }
 function jrPlayToggle(){
@@ -1032,6 +1042,7 @@ function jrComplete(early){
   jr.active=false; droneSet(false); orbOverride=null;
   $('jBanner').classList.add('hide');
   $('jDock').classList.add('hide'); dock.classList.remove('hide');
+  $('dDetails').style.display='';
   syncUI();                              // dock returns with the current note
   ovlMode='jr'; jr.ui='done';
   $('quiz').classList.remove('hide'); $('qDots').innerHTML='';
@@ -1059,6 +1070,7 @@ function jrAbort(){
   jr.active=false; orbOverride=null;
   $('jBanner').classList.add('hide');
   $('jDock').classList.add('hide'); dock.classList.remove('hide');
+  $('dDetails').style.display='';
   if(droneOn) droneSet(false);
   syncUI();
 }
@@ -1083,7 +1095,7 @@ function jrTick(){
 // after the third tone: drone holds while the voice does; 3s of silence stops the
 // drone; 3s of stillness later the bell initiates the next centre (never auto-playing)
 function jrDoneTick(){
-  const W=window.__jrFast?1000:3000;
+  const W=window.__jrFast?1000:2000;
   const now=performance.now();
   if(jr.doneStep==='toning'){
     if(eng.voiced){ jr.acc+=eng.coh; jr.n++; jr.doneT=now; return; }
@@ -1111,6 +1123,12 @@ function jrProgress(){
 /* ---------- wiring ---------- */
 const veil=$('veil'), dock=$('dock');
 function reveal(){ veil.classList.add('gone'); lab.classList.remove('hide'); dock.classList.remove('hide'); }
+function goHome(){                       // journey over: back to the front page
+  $('quiz').classList.add('hide');
+  if(engine.running) stopMic();
+  lab.classList.add('hide'); dock.classList.add('hide');
+  veil.classList.remove('gone');
+}
 function syncUI(){
   $('dMic').classList.toggle('active',engine.running);
   $('dDrone').classList.toggle('active',droneOn);
@@ -1144,7 +1162,10 @@ async function quizEntry(){
 }
 $('vQuiz').onclick=quizEntry;
 $('dQuiz').onclick=quizEntry;
-$('qClose').onclick=()=>{ ovlMode==='jr'?$('quiz').classList.add('hide'):quizEnd(); };
+$('qClose').onclick=()=>{
+  if(ovlMode==='jr'){ jr.ui==='done'?goHome():$('quiz').classList.add('hide'); }
+  else quizEnd();
+};
 $('qSkip').onclick=()=>{
   if(ovlMode==='jr'){ $('quiz').classList.add('hide'); return; }
   if(quiz.step===99) quizStart();                 // "Walk it again"
@@ -1152,6 +1173,7 @@ $('qSkip').onclick=()=>{
 $('qNext').onclick=()=>{
   if(ovlMode==='jr'){
     if(jr.ui==='pick') journeyStart('full',0);
+    else if(jr.ui==='done') goHome();
     else $('quiz').classList.add('hide');
     return;
   }

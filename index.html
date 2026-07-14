@@ -9,7 +9,7 @@
 <meta property="og:description" content="Tone the seven chakras with a shruti drone and watch your voice bloom — colour, breath, and resonance, alive in real time.">
 <meta name="theme-color" content="#04070a">
 <title>Vox — Vocal Toning</title>
-<meta name="vox-version" content="0.4.0">
+<meta name="vox-version" content="0.5.0">
 <style>
   :root{
     --void:#04070a; --ink:#d9e6e2; --muted:#6f8580;
@@ -175,6 +175,10 @@
     .nbtn{width:34px;height:42px;font-size:1.3rem}
     #dTune{font-size:.78rem;padding:.5rem .7rem;border-radius:10px}
     #dEnd{font-size:.84rem;padding:.72rem 1.1rem;border-radius:12px}
+    #jDock{gap:14px;padding:14px 20px;border-radius:20px;bottom:28px}
+    .jbtn{font-size:.98rem;padding:1rem 1.6rem;border-radius:14px;min-width:100px}
+    .jbtn svg{width:26px;height:26px}
+    #jHums i{width:13px;height:13px}
   }
 
   /* ---------- summary ---------- */
@@ -238,10 +242,23 @@
   #jName{font-size:.78rem;color:var(--ink);font-weight:400;letter-spacing:.05em;white-space:nowrap;
     overflow:hidden;text-overflow:ellipsis}
   #jSub2{font-size:.58rem;color:var(--muted);letter-spacing:.12em;text-transform:uppercase}
-  #jTime{font-size:.9rem;color:var(--ink);font-weight:200;min-width:3.4ch;text-align:right;flex:none}
-  #jSkip,#jEnd{background:none;border:none;color:var(--muted);font-size:.95rem;cursor:pointer;
+  #jHums{display:flex;gap:6px;align-items:center;flex:none}
+  #jHums i{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.1);
+    border:1px solid var(--line);transition:background .4s,border-color .4s}
+  #jEnd{background:none;border:none;color:var(--muted);font-size:.95rem;cursor:pointer;
     padding:.2rem .3rem;flex:none;line-height:1}
-  #jSkip:hover,#jEnd:hover{color:var(--aqua)}
+  #jEnd:hover{color:var(--aqua)}
+  /* journey dock: three controls, nothing else — play/pause, octave, next */
+  #jDock{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);display:flex;align-items:center;gap:10px;
+    padding:10px 14px;background:var(--glass);border:1px solid var(--line);border-radius:16px;
+    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);z-index:20;transition:opacity .4s ease}
+  #jDock.hide{opacity:0;pointer-events:none}
+  .jbtn{appearance:none;background:transparent;border:1px solid var(--line);border-radius:12px;color:var(--ink);
+    font:inherit;font-size:.8rem;letter-spacing:.14em;font-weight:500;padding:.8rem 1.2rem;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;transition:.15s;min-width:72px;
+    -webkit-tap-highlight-color:transparent}
+  .jbtn:hover{color:var(--aqua);border-color:var(--aqua-deep);background:rgba(79,216,196,.06)}
+  .jbtn svg{width:20px;height:20px;fill:currentColor;stroke:none}
   #qBar i{display:block;height:100%;width:0;background:var(--aqua)}
   #qBtns{display:flex;gap:.7rem;margin-top:.15rem}
 </style>
@@ -268,8 +285,7 @@
   <div id="jBanner" class="hide">
     <span id="jDot"></span>
     <div id="jInfo"><b id="jName"></b><span id="jSub2"></span></div>
-    <div id="jTime"></div>
-    <button id="jSkip" title="Next chakra" aria-label="Next chakra">▸</button>
+    <div id="jHums"><i></i><i></i><i></i></div>
     <button id="jEnd" title="End journey" aria-label="End journey">✕</button>
   </div>
   <div id="hero">
@@ -330,6 +346,15 @@
   <button class="ic" id="dFull" title="Fullscreen" aria-label="Fullscreen">
     <svg viewBox="0 0 24 24"><path d="M4 9V4h5"/><path d="M20 9V4h-5"/><path d="M4 15v5h5"/><path d="M20 15v5h-5"/></svg>
   </button>
+</div>
+
+<div id="jDock" class="hide">
+  <button class="jbtn" id="jPlay" aria-label="Start">
+    <svg id="jPlayIco" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+    <svg id="jPauseIco" viewBox="0 0 24 24" hidden><path d="M7 5h4v14H7z M13 5h4v14h-4z"/></svg>
+  </button>
+  <button class="jbtn" id="jOct">OCTAVE 3</button>
+  <button class="jbtn" id="jNext">NEXT</button>
 </div>
 
 <div id="quiz" class="hide">
@@ -397,9 +422,9 @@ const eng=engine.state;   // live feature state, mutated by the engine each fram
 // the user's home toning note, found by the tone test (midi number)
 let homeNote=0;
 try{ const h=parseInt(localStorage.getItem('voxHomeNote')); if(h>=36&&h<=84) homeNote=h; }catch(e){}
-// chakra journey octave: midi of the root C (48 = deep C3, 60 = bright C4); 0 = not chosen yet
-let chakraOct=0;
-try{ const o=parseInt(localStorage.getItem('voxChakraOct')); if(o===48||o===60) chakraOct=o; }catch(e){}
+// chakra journey octave: midi of the root C (36=C2, 48=C3 default, 60=C4)
+let chakraOct=48;
+try{ const o=parseInt(localStorage.getItem('voxChakraOct')); if([36,48,60].includes(o)) chakraOct=o; }catch(e){}
 
 // cross-tab audio focus: starting sound in any Resonance tab quiets the others
 const bc=('BroadcastChannel' in window)?new BroadcastChannel('resonance-audio'):null;
@@ -880,7 +905,9 @@ const CHAKRA_SEQ=[
   [0,'Root','Muladhara'],[2,'Sacral','Svadhisthana'],[4,'Solar Plexus','Manipura'],
   [5,'Heart','Anahata'],[7,'Throat','Vishuddha'],[9,'Third Eye','Ajna'],[11,'Crown','Sahasrara'],
 ];
-const jr={active:false,mode:'',idx:0,phase:'',t0:0,acc:0,n:0,scores:[],ui:''};
+// phase: 'ready' (drone off, waiting for play) | 'run' (droning, counting hums)
+// | 'done' (3rd hum credited, advancing). hums: credited tones this chakra.
+const jr={active:false,mode:'',idx:0,phase:'ready',hums:0,humDone:false,acc:0,n:0,scores:[],ui:''};
 let ovlMode='quiz';
 
 function chime(m){                       // soft bell in the incoming chakra's pitch
@@ -902,33 +929,16 @@ async function jrEntry(){
   if(!engine.running) await useMic();
   if(!engine.running) return;
   if(quiz.active) quizEnd();
-  chakraOct?jrPick():jrOct();
-}
-function jrOct(){
-  ovlMode='jr'; jr.ui='oct';
-  $('quiz').classList.remove('hide'); $('qDots').innerHTML='';
-  $('qTitle').textContent='Where does your voice live?';
-  $('qText').textContent='The chakra notes can sound deep or bright — choose what your voice settles into. You can change this anytime from the journey screen.';
-  $('qNote').textContent=''; $('qSub').textContent=''; $('qFill').style.width='0';
-  $('qSkip').style.visibility=''; $('qSkip').textContent='Close';
-  $('qNext').style.visibility='hidden';
-  const ch=$('qChips'); ch.hidden=false; ch.innerHTML=''; ch.style.flexDirection='';
-  [['Deep',48,'low octave'],['Bright',60,'high octave']].forEach(([nm,base,rng])=>{
-    const b=document.createElement('button');
-    b.className='qchip'; b.style.cursor='pointer'; b.style.font='inherit';
-    b.innerHTML=nm+' <b>'+rng+'</b>';
-    b.onclick=()=>{ chakraOct=base; try{localStorage.setItem('voxChakraOct',base);}catch(e){} jrPick(); };
-    ch.appendChild(b);
-  });
+  jrPick();
 }
 function jrPick(){
   ovlMode='jr'; jr.ui='pick';
   $('quiz').classList.remove('hide'); $('qDots').innerHTML='';
   $('qTitle').textContent='Chakra journey';
-  $('qText').textContent='Seven centres, seven notes. Dwell in one for as long as you like, or walk them all — root to crown, two minutes each, with a breath between.';
+  $('qText').textContent='Seven centres, seven notes. Sound three tones on each — five slow breaths of sound at a time. Dwell in one centre, or walk them all, root to crown.';
   $('qNote').textContent=''; $('qSub').textContent=''; $('qFill').style.width='0';
   $('qSkip').style.visibility=''; $('qSkip').textContent='Close';
-  $('qNext').style.visibility=''; $('qNext').textContent='Full journey · 14 min';
+  $('qNext').style.visibility=''; $('qNext').textContent='Full journey — root to crown';
   const ch=$('qChips'); ch.hidden=false; ch.innerHTML=''; ch.style.flexDirection='column';
   [...CHAKRA_SEQ].map((c,i)=>[c,i]).reverse().forEach(([[pc,en,sk],i])=>{   // crown on top
     const b=document.createElement('button');
@@ -937,48 +947,75 @@ function jrPick(){
     b.onclick=()=>journeyStart('single',i);
     ch.appendChild(b);
   });
-  const oc=document.createElement('button');
-  oc.className='qchip'; oc.style.cursor='pointer'; oc.style.font='inherit'; oc.style.opacity='.7';
-  oc.innerHTML='voice: <b>'+(chakraOct===48?'deep':'bright')+'</b> · tap to change';
-  oc.onclick=()=>{ chakraOct=chakraOct===48?60:48; try{localStorage.setItem('voxChakraOct',chakraOct);}catch(e){} jrPick(); };
-  ch.appendChild(oc);
 }
 function journeyStart(mode2,idx){
   jr.active=true; jr.mode=mode2; jr.idx=mode2==='full'?0:idx; jr.scores=[];
   $('quiz').classList.add('hide');
   $('jBanner').classList.remove('hide');
-  $('jSkip').style.display=mode2==='full'?'':'none';
-  jrTone();
+  dock.classList.add('hide'); $('jDock').classList.remove('hide');
+  $('jOct').textContent='OCTAVE '+(Math.floor(chakraOct/12)-1);
+  jrEnter();
 }
-function jrTone(){
-  jr.phase='tone'; jr.t0=performance.now(); jr.acc=0; jr.n=0;
+// a chakra begins at rest: drone silent, three empty tone dots, waiting on play
+function jrEnter(){
+  jr.phase='ready'; jr.hums=0; jr.humDone=false; jr.acc=0; jr.n=0;
   const [pc,en,sk]=CHAKRA_SEQ[jr.idx];
   orbOverride=pc;
-  setDroneMidi(chakraOct+pc); droneSet(true);
+  setDroneMidi(chakraOct+pc);
+  if(droneOn) droneSet(false);
   $('jDot').style.background=CHAKRAS[pc][0]; $('jDot').style.color=CHAKRAS[pc][0];
   $('jName').textContent=sk+' — '+en+' · '+NOTES[pc];
-  $('jSub2').textContent=jr.mode==='full'?('centre '+(jr.idx+1)+' of 7'):'tone as long as you like';
+  jrHumDots(); jrPlayUI(); jrSub('press play to begin');
+}
+function jrSub(tail){
+  $('jSub2').textContent=(jr.mode==='full'?('centre '+(jr.idx+1)+' of 7 · '):'')+tail;
+}
+function jrHumDots(){
+  const col=CHAKRAS[CHAKRA_SEQ[jr.idx][0]][0];
+  [...$('jHums').children].forEach((d,i)=>{
+    d.style.background=i<jr.hums?col:'';
+    d.style.borderColor=i<jr.hums?col:'';
+  });
+}
+function jrPlayUI(){
+  const run=jr.phase==='run';
+  $('jPlayIco').hidden=run; $('jPauseIco').hidden=!run;
+  $('jPlay').setAttribute('aria-label',run?'Pause':'Start');
+}
+function jrPlayToggle(){
+  if(!jr.active||jr.phase==='done') return;
+  if(jr.phase==='run'){
+    jr.phase='ready'; droneSet(false); jrSub('paused — press play');
+  } else {
+    jr.phase='run';
+    setDroneMidi(chakraOct+CHAKRA_SEQ[jr.idx][0]); droneSet(true);
+    jrSub('hum & hold with the drone');
+  }
+  jrPlayUI();
+}
+function jrOctCycle(){
+  chakraOct=chakraOct===48?60:(chakraOct===60?36:48);   // 3 -> 4 -> 2 -> 3 ...
+  try{ localStorage.setItem('voxChakraOct',chakraOct); }catch(e){}
+  $('jOct').textContent='OCTAVE '+(Math.floor(chakraOct/12)-1);
+  setDroneMidi(chakraOct+CHAKRA_SEQ[jr.idx][0]);
+  if(jr.phase==='run') droneSet(true);                  // retune the sounding drone
 }
 function jrRecord(){
   jr.scores.push({i:jr.idx, coh:jr.n>50?jr.acc/jr.n:0});
 }
-function jrNext(skip){                    // current tone finished
+function jrNext(){                        // this chakra finished (3 tones or NEXT)
   jrRecord();
-  if(jr.idx>=6){ jrComplete(false); return; }
-  jr.idx++;
-  const [pc,en,sk]=CHAKRA_SEQ[jr.idx];
-  chime(chakraOct+pc);
+  if(jr.idx>=6||jr.mode!=='full'){ jrComplete(jr.mode==='full'&&jr.scores.length<7); return; }
   droneSet(false);
-  orbOverride=pc;
-  $('jDot').style.background=CHAKRAS[pc][0]; $('jDot').style.color=CHAKRAS[pc][0];
-  if(skip){ jrTone(); return; }
-  jr.phase='rest'; jr.t0=performance.now();
-  $('jName').textContent='rest — a slow breath';
-  $('jSub2').textContent='next: '+sk+' — '+en;
+  jr.idx++;
+  chime(chakraOct+CHAKRA_SEQ[jr.idx][0]);
+  jrEnter();                              // next centre waits for play — never auto-starts
 }
 function jrComplete(early){
   jr.active=false; droneSet(false); orbOverride=null;
   $('jBanner').classList.add('hide');
+  $('jDock').classList.add('hide'); dock.classList.remove('hide');
+  syncUI();                              // dock returns with the current note
   ovlMode='jr'; jr.ui='done';
   $('quiz').classList.remove('hide'); $('qDots').innerHTML='';
   const scored=jr.scores.filter(s=>s.coh>0);
@@ -1004,27 +1041,34 @@ function jrAbort(){
   if(!jr.active) return;
   jr.active=false; orbOverride=null;
   $('jBanner').classList.add('hide');
+  $('jDock').classList.add('hide'); dock.classList.remove('hide');
   if(droneOn) droneSet(false);
+  syncUI();
 }
 function jrTick(){
-  const TONE=window.__jrFast?6000:120000, REST=window.__jrFast?2000:20000;
-  const el=performance.now()-jr.t0;
-  if(jr.phase==='tone'){
-    if(eng.voiced){ jr.acc+=eng.coh; jr.n++; }
-    if(jr.mode==='full'){
-      jrClock(Math.max(0,TONE-el));
-      if(el>=TONE) jrNext(false);
-    } else jrClock(el);
-  } else {
-    jrClock(Math.max(0,REST-el));
-    if(el>=REST) jrTone();
+  if(jr.phase!=='run') return;                    // paused / waiting: nothing counts
+  const HUM=window.__jrFast?1.5:5;                // seconds a tone must hold
+  if(eng.voiced){ jr.acc+=eng.coh; jr.n++; }
+  if(eng.voiced&&!jr.humDone&&eng.breath>=HUM){
+    jr.humDone=true; jr.hums++;                   // one credit per continuous tone
+    jrHumDots();
+    if(jr.hums>=3){                               // centre complete
+      jr.phase='done';
+      jrSub('beautiful');
+      setTimeout(()=>{ if(jr.active) jrNext(); },900);
+      return;
+    }
+    jrSub('release, breathe, and sound again');
   }
+  if(!eng.voiced&&jr.humDone) jr.humDone=false;   // silence re-arms the next tone
+  jrProgress();
 }
-let jrClockT=0;
-function jrClock(ms){
-  const now=performance.now(); if(now-jrClockT<250) return; jrClockT=now;
-  const s=Math.ceil(ms/1000);
-  $('jTime').textContent=((s/60)|0)+':'+String(s%60).padStart(2,'0');
+let jrUiT=0;
+function jrProgress(){
+  const now=performance.now(); if(now-jrUiT<250) return; jrUiT=now;
+  const HUM=window.__jrFast?1.5:5;
+  if(eng.voiced&&!jr.humDone) jrSub('hold — '+Math.max(0,Math.ceil(HUM-eng.breath))+'s');
+  else if(!eng.voiced&&!jr.humDone) jrSub('hum & hold with the drone');
 }
 
 /* ---------- wiring ---------- */
@@ -1082,10 +1126,12 @@ $('qNext').onclick=()=>{
 };
 $('vJourney').onclick=jrEntry;
 $('dJourney').onclick=jrEntry;
-$('jSkip').onclick=()=>{ if(jr.active){ jr.phase==='rest'?jrTone():jrNext(true); } };
+$('jPlay').onclick=jrPlayToggle;
+$('jOct').onclick=()=>{ if(jr.active) jrOctCycle(); };
+$('jNext').onclick=()=>{ if(jr.active&&jr.phase!=='done') jrNext(); };
 $('jEnd').onclick=()=>{
   if(!jr.active) return;
-  if(jr.phase==='tone') jrRecord();
+  if(jr.n>0) jrRecord();
   jrComplete(jr.mode==='full'&&jr.scores.length<7);
 };
 $('vMic').onclick=useMic;

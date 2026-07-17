@@ -9,7 +9,7 @@
 <meta property="og:description" content="A vocal toning companion. Hum or sing along to the sacred frequencies and feel your Chakras awaken. We welcome you and honor you, Namaste.">
 <meta name="theme-color" content="#04070a">
 <title>Vox — Vocal Toning</title>
-<meta name="vox-version" content="0.8.0">
+<meta name="vox-version" content="0.8.1">
 <style>
   :root{
     --void:#04070a; --ink:#d9e6e2; --muted:#6f8580;
@@ -398,7 +398,6 @@
     <svg id="jPlayIco" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
     <svg id="jPauseIco" viewBox="0 0 24 24" style="display:none"><path d="M7 5h4v14H7z M13 5h4v14h-4z"/></svg>
   </button>
-  <button class="jbtn" id="jOct">OCTAVE 3</button>
   <button class="jbtn" id="jNext">NEXT</button>
 </div>
 
@@ -477,9 +476,8 @@ const eng=engine.state;   // live feature state, mutated by the engine each fram
 // the user's home toning note, found by the tone test (midi number)
 let homeNote=0;
 try{ const h=parseInt(localStorage.getItem('voxHomeNote')); if(h>=36&&h<=84) homeNote=h; }catch(e){}
-// chakra journey octave: midi of the root C (36=C2, 48=C3 default, 60=C4)
-let chakraOct=48;
-try{ const o=parseInt(localStorage.getItem('voxChakraOct')); if([36,48,60].includes(o)) chakraOct=o; }catch(e){}
+// chakra journey octave: locked to octave 3 (root C3, midi 48)
+const chakraOct=48;
 
 // cross-tab audio focus: starting sound in any Resonance tab quiets the others
 const bc=('BroadcastChannel' in window)?new BroadcastChannel('resonance-audio'):null;
@@ -1011,7 +1009,6 @@ function journeyStart(mode2,idx){
   $('jBanner').classList.remove('hide');
   dock.classList.add('hide'); $('jDock').classList.remove('hide');
   drawer.classList.add('closed'); $('dDetails').style.display='none';   // journey is minimal
-  $('jOct').textContent='OCTAVE '+(Math.floor(chakraOct/12)-1);
   jrEnter();
 }
 // a chakra begins at rest: drone silent, three empty tone dots, waiting on play
@@ -1052,13 +1049,6 @@ function jrPlayToggle(){
     jrSub('hum & hold with the drone');
   }
   jrPlayUI();
-}
-function jrOctCycle(){
-  chakraOct=chakraOct===48?60:(chakraOct===60?36:48);   // 3 -> 4 -> 2 -> 3 ...
-  try{ localStorage.setItem('voxChakraOct',chakraOct); }catch(e){}
-  $('jOct').textContent='OCTAVE '+(Math.floor(chakraOct/12)-1);
-  setDroneMidi(chakraOct+CHAKRA_SEQ[jr.idx][0]);
-  if(jr.phase==='run') droneSet(true);                  // retune the sounding drone
 }
 function jrRecord(){
   jr.scores.push({i:jr.idx, coh:jr.n>50?jr.acc/jr.n:0});
@@ -1203,7 +1193,6 @@ $('qNext').onclick=()=>{
 $('vJourney').onclick=jrEntry;
 $('dJourney').onclick=jrEntry;
 $('jPlay').onclick=jrPlayToggle;
-$('jOct').onclick=()=>{ if(jr.active) jrOctCycle(); };
 $('jNext').onclick=()=>{ if(jr.active) jrNext(); };   // also shortcuts the wind-down
 $('jiBegin').onclick=()=>jrBegin('full',0);
 $('jiClose').onclick=()=>$('jIntro').classList.add('hide');

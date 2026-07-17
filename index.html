@@ -9,7 +9,7 @@
 <meta property="og:description" content="Tone the seven chakras with a shruti drone and watch your voice bloom — colour, breath, and resonance, alive in real time.">
 <meta name="theme-color" content="#04070a">
 <title>Vox — Vocal Toning</title>
-<meta name="vox-version" content="0.7.0">
+<meta name="vox-version" content="0.7.1">
 <style>
   :root{
     --void:#04070a; --ink:#d9e6e2; --muted:#6f8580;
@@ -250,7 +250,7 @@
   .jrow .jen{font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
   @keyframes jiIn{to{opacity:1;transform:none}}
   @media (prefers-reduced-motion:reduce){ .jrow{animation:none;opacity:1;transform:none} }
-  #jiBegin{width:62%;justify-content:center}
+  #jiBegin{width:62%;justify-content:center;white-space:nowrap}
 
   /* ---------- find-your-tone test ---------- */
   #quiz{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;
@@ -408,10 +408,9 @@
   <div id="jiCard">
     <button id="jiClose" aria-label="Close">×</button>
     <h2>The Seven Chakras</h2>
-    <p>Seven centres, seven notes. Tap a centre to dwell in it —
-       or walk them all, root to crown.</p>
+    <p>Welcome, click begin journey or select single chakra if you like.</p>
     <div id="jiRows"></div>
-    <button class="jbtn" id="jiBegin">BEGIN</button>
+    <button class="jbtn" id="jiBegin">BEGIN JOURNEY</button>
   </div>
 </div>
 

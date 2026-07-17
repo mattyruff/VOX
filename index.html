@@ -9,7 +9,7 @@
 <meta property="og:description" content="A vocal toning companion. Hum or sing along to the sacred frequencies and feel your Chakras awaken. We welcome you and honor you, Namaste.">
 <meta name="theme-color" content="#04070a">
 <title>Vox — Vocal Toning</title>
-<meta name="vox-version" content="0.8.2">
+<meta name="vox-version" content="0.8.3">
 <style>
   :root{
     --void:#04070a; --ink:#d9e6e2; --muted:#6f8580;
@@ -53,6 +53,7 @@
     padding:60px 4vw 120px;gap:1rem;overflow-y:auto;scrollbar-gutter:stable both-edges;
     transition:opacity .5s ease}
   #lab.hide{opacity:0;pointer-events:none}
+  #labTop,#labBot{display:flex;flex-direction:column;align-items:center;gap:1rem;width:100%}
 
   #hero{display:flex;align-items:baseline;gap:1.2rem;margin-top:.4rem}
   #noteBig{font-weight:200;font-size:clamp(3rem,9vw,4.6rem);letter-spacing:.06em;color:var(--aqua-pale);
@@ -155,7 +156,13 @@
 
   /* ---------- desktop: the lab at full size ---------- */
   @media (min-width:1100px) and (min-height:640px){
-    #lab{justify-content:safe center;gap:1.3rem;padding:70px 4vw 140px}
+    /* three regions — banner/hero above, orb dead-centre, details below —
+       so the eclipse anchors the vertical middle of the screen */
+    #lab{display:grid;grid-template-rows:minmax(0,1fr) auto minmax(0,1fr);
+      align-items:center;justify-items:center;gap:0;padding:64px 4vw 64px}
+    #labTop{align-self:end;margin-bottom:1.6rem;gap:1.3rem}
+    #labBot{align-self:start;margin-top:1.6rem;gap:1.3rem}
+    #orbWrap{transform:translateY(2.1rem)}  /* optical: canvas centre = viewport centre */
     #noteBig{font-size:clamp(4.2rem,7vw,6.4rem)}
     #chakName{font-size:1.5rem}
     #hzTxt{font-size:1.15rem}
@@ -344,6 +351,7 @@
 </div>
 
 <main id="lab" class="hide quiet">
+  <div id="labTop">
   <div id="jBanner" class="hide">
     <span id="jDot"></span>
     <div id="jInfo"><b id="jName"></b><span id="jSub2"></span></div>
@@ -355,12 +363,14 @@
     <div id="noteBig">—</div>
     <div id="hzTxt">listening…</div>
   </div>
+  </div>
   <div id="orbWrap">
     <canvas id="orb"></canvas>
     <div class="cohBar" id="cohBarL"><div class="zone zTop"></div><div class="zone zMid"></div><div class="zone zBot"></div></div>
     <div class="cohBar" id="cohBarR"><div class="zone zTop"></div><div class="zone zMid"></div><div class="zone zBot"></div></div>
     <div id="orbTxt"><div id="cohNum">—</div><div id="cohWord">&nbsp;</div></div>
   </div>
+  <div id="labBot">
   <button id="dDetails">· details ·</button>
 
   <div id="drawer" class="closed">
@@ -376,6 +386,7 @@
   </div>
 
   <canvas id="strip"></canvas>
+  </div>
   </div>
 </main>
 

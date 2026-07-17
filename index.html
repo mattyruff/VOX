@@ -9,7 +9,7 @@
 <meta property="og:description" content="Tone the seven chakras with a shruti drone and watch your voice bloom — colour, breath, and resonance, alive in real time.">
 <meta name="theme-color" content="#04070a">
 <title>Vox — Vocal Toning</title>
-<meta name="vox-version" content="0.6.2">
+<meta name="vox-version" content="0.7.0">
 <style>
   :root{
     --void:#04070a; --ink:#d9e6e2; --muted:#6f8580;
@@ -189,6 +189,14 @@
     .jbtn{font-size:.98rem;padding:1rem 1.6rem;border-radius:14px;min-width:100px}
     .jbtn svg{width:26px;height:26px}
     #jHums i{width:13px;height:13px}
+    #jiCard{width:min(540px,90vw);padding:2.2rem 2rem 1.8rem}
+    #jiCard h2{font-size:1.3rem}
+    #jiCard>p{font-size:.92rem}
+    .jrow{padding:.65rem 1rem;gap:1.1rem}
+    .jrow .jdot{width:42px;height:42px}
+    .jrow .jdot span{font-size:1.05rem}
+    .jrow .jsk{font-size:1.1rem}
+    .jrow .jen{font-size:.7rem}
   }
 
   /* ---------- summary ---------- */
@@ -214,6 +222,35 @@
   #trend{width:100%;height:56px}
   #sBtns{display:flex;gap:.7rem;justify-content:flex-end;flex-wrap:wrap}
   #sNoTones{color:var(--muted);font-size:.78rem;line-height:1.7}
+
+  /* ---------- chakra journey intro: the seven centres ---------- */
+  #jIntro{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;
+    background:rgba(2,5,6,.88);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+    transition:opacity .4s}
+  #jIntro.hide{opacity:0;pointer-events:none}
+  #jiCard{position:relative;width:min(440px,92vw);max-height:92vh;overflow-y:auto;background:#071010;
+    border:1px solid var(--line);border-radius:20px;padding:1.7rem 1.4rem 1.4rem;
+    display:flex;flex-direction:column;gap:1rem;align-items:center;text-align:center}
+  #jiClose{position:absolute;top:10px;right:14px;background:none;border:none;color:var(--muted);
+    font-size:1.25rem;cursor:pointer;line-height:1}
+  #jiClose:hover{color:var(--aqua)}
+  #jiCard h2{font-weight:300;font-size:1.05rem;letter-spacing:.3em;text-transform:uppercase;color:var(--aqua-pale)}
+  #jiCard>p{color:var(--muted);font-size:.8rem;line-height:1.7;max-width:38ch}
+  #jiRows{display:flex;flex-direction:column;gap:.45rem;width:100%}
+  .jrow{display:flex;align-items:center;gap:.9rem;width:100%;padding:.5rem .8rem;
+    appearance:none;background:rgba(79,216,196,.03);border:1px solid var(--line);border-radius:14px;
+    cursor:pointer;font:inherit;color:var(--ink);text-align:left;transition:border-color .15s,background .15s;
+    -webkit-tap-highlight-color:transparent;
+    opacity:0;transform:translateY(8px);animation:jiIn .5s ease forwards}
+  .jrow:hover{border-color:currentColor;background:rgba(79,216,196,.07)}
+  .jrow .jdot{width:34px;height:34px;border-radius:50%;flex:none;display:flex;align-items:center;
+    justify-content:center;background:currentColor;box-shadow:0 0 12px 1px currentColor}
+  .jrow .jdot span{color:rgba(4,7,10,.92);font-size:.85rem;font-weight:600}
+  .jrow .jsk{font-size:.92rem;font-weight:400;letter-spacing:.04em;flex:1}
+  .jrow .jen{font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+  @keyframes jiIn{to{opacity:1;transform:none}}
+  @media (prefers-reduced-motion:reduce){ .jrow{animation:none;opacity:1;transform:none} }
+  #jiBegin{width:62%;justify-content:center}
 
   /* ---------- find-your-tone test ---------- */
   #quiz{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;
@@ -365,6 +402,17 @@
   </button>
   <button class="jbtn" id="jOct">OCTAVE 3</button>
   <button class="jbtn" id="jNext">NEXT</button>
+</div>
+
+<div id="jIntro" class="hide">
+  <div id="jiCard">
+    <button id="jiClose" aria-label="Close">×</button>
+    <h2>The Seven Chakras</h2>
+    <p>Seven centres, seven notes. Tap a centre to dwell in it —
+       or walk them all, root to crown.</p>
+    <div id="jiRows"></div>
+    <button class="jbtn" id="jiBegin">BEGIN</button>
+  </div>
 </div>
 
 <div id="quiz" class="hide">
@@ -940,28 +988,27 @@ function chime(m){                       // soft bell in the incoming chakra's p
   });
   setTimeout(()=>{ try{g.disconnect();}catch(e){} },3500);
 }
-async function jrEntry(){
+function jrEntry(){
+  if(quiz.active) quizEnd();
+  // the Seven Chakras intro: tap a centre to dwell, BEGIN to walk them all.
+  // Mic is only requested once the user chooses.
+  const wrap=$('jiRows'); wrap.innerHTML='';
+  [...CHAKRA_SEQ].map((c,i)=>[c,i]).reverse().forEach(([[pc,en,sk],i],k)=>{
+    const b=document.createElement('button');
+    b.className='jrow'; b.style.color=CHAKRAS[pc][0];
+    b.style.animationDelay=(k*70)+'ms';
+    b.innerHTML='<span class="jdot"><span>'+NOTES[pc]+'</span></span>'+
+      '<span class="jsk">'+sk+'</span><span class="jen">'+en+' Chakra</span>';
+    b.onclick=()=>jrBegin('single',i);
+    wrap.appendChild(b);
+  });
+  $('jIntro').classList.remove('hide');
+}
+async function jrBegin(mode,idx){
+  $('jIntro').classList.add('hide');
   if(!engine.running) await useMic();
   if(!engine.running) return;
-  if(quiz.active) quizEnd();
-  jrPick();
-}
-function jrPick(){
-  ovlMode='jr'; jr.ui='pick';
-  $('quiz').classList.remove('hide'); $('qDots').innerHTML='';
-  $('qTitle').textContent='Chakra journey';
-  $('qText').textContent='Seven centres, seven notes. Sound three tones on each — five slow breaths of sound at a time. Dwell in one centre, or walk them all, root to crown.';
-  $('qNote').textContent=''; $('qSub').textContent=''; $('qFill').style.width='0';
-  $('qSkip').style.visibility=''; $('qSkip').textContent='Close';
-  $('qNext').style.visibility=''; $('qNext').textContent='Full journey — root to crown';
-  const ch=$('qChips'); ch.hidden=false; ch.innerHTML=''; ch.style.flexDirection='column';
-  [...CHAKRA_SEQ].map((c,i)=>[c,i]).reverse().forEach(([[pc,en,sk],i])=>{   // crown on top
-    const b=document.createElement('button');
-    b.className='qchip'; b.style.cursor='pointer'; b.style.font='inherit';
-    b.innerHTML='<span style="color:'+CHAKRAS[pc][0]+'">●</span>&nbsp; '+sk+' — '+en+' <b>'+NOTES[pc]+'</b>';
-    b.onclick=()=>journeyStart('single',i);
-    ch.appendChild(b);
-  });
+  journeyStart(mode,idx);
 }
 function journeyStart(mode2,idx){
   jr.active=true; jr.mode=mode2; jr.idx=mode2==='full'?0:idx; jr.scores=[];
@@ -1163,8 +1210,7 @@ $('qSkip').onclick=()=>{
 };
 $('qNext').onclick=()=>{
   if(ovlMode==='jr'){
-    if(jr.ui==='pick') journeyStart('full',0);
-    else if(jr.ui==='done') goHome();
+    if(jr.ui==='done') goHome();
     else $('quiz').classList.add('hide');
     return;
   }
@@ -1179,6 +1225,8 @@ $('dJourney').onclick=jrEntry;
 $('jPlay').onclick=jrPlayToggle;
 $('jOct').onclick=()=>{ if(jr.active) jrOctCycle(); };
 $('jNext').onclick=()=>{ if(jr.active) jrNext(); };   // also shortcuts the wind-down
+$('jiBegin').onclick=()=>jrBegin('full',0);
+$('jiClose').onclick=()=>$('jIntro').classList.add('hide');
 $('jEnd').onclick=()=>{
   if(!jr.active) return;
   if(jr.n>0) jrRecord();

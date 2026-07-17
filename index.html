@@ -9,7 +9,7 @@
 <meta property="og:description" content="A vocal toning companion. Hum or sing along to the sacred frequencies and feel your Chakras awaken. We welcome you and honor you, Namaste.">
 <meta name="theme-color" content="#04070a">
 <title>Vox — Vocal Toning</title>
-<meta name="vox-version" content="0.8.3">
+<meta name="vox-version" content="0.8.4">
 <style>
   :root{
     --void:#04070a; --ink:#d9e6e2; --muted:#6f8580;
@@ -192,7 +192,7 @@
     .nbtn{width:34px;height:42px;font-size:1.3rem}
     #dTune{font-size:.78rem;padding:.5rem .7rem;border-radius:10px}
     #dEnd{font-size:.84rem;padding:.72rem 1.1rem;border-radius:12px}
-    #jDock{gap:14px;padding:14px 20px;border-radius:20px;bottom:28px}
+    #jDock{gap:14px;padding:14px 20px;border-radius:20px}
     .jbtn{font-size:.98rem;padding:1rem 1.6rem;border-radius:14px;min-width:100px}
     .jbtn svg{width:26px;height:26px}
     #jHums i{width:13px;height:13px}
@@ -330,6 +330,13 @@
     -webkit-tap-highlight-color:transparent}
   .jbtn:hover{color:var(--aqua);border-color:var(--aqua-deep);background:rgba(79,216,196,.06)}
   .jbtn svg{width:20px;height:20px;fill:currentColor;stroke:none}
+  /* desktop: mirror the banner chip — the dock centre sits the same 464px below
+     the orb's centre as the banner sits above (clamped on short windows).
+     Lives after the base rules so it wins the cascade. */
+  @media (min-width:1100px) and (min-height:640px){
+    #jDock{bottom:auto;top:min(calc(50vh + 464px),calc(100vh - 90px));
+      transform:translate(-50%,-50%)}
+  }
   #qBar i{display:block;height:100%;width:0;background:var(--aqua)}
   #qBtns{display:flex;gap:.7rem;margin-top:.15rem}
 </style>

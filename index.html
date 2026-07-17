@@ -9,7 +9,7 @@
 <meta property="og:description" content="A vocal toning companion. Hum or sing along to the sacred frequencies and feel your Chakras awaken. We welcome you and honor you, Namaste.">
 <meta name="theme-color" content="#04070a">
 <title>Vox — Vocal Toning</title>
-<meta name="vox-version" content="0.7.3">
+<meta name="vox-version" content="0.8.0">
 <style>
   :root{
     --void:#04070a; --ink:#d9e6e2; --muted:#6f8580;
@@ -321,9 +321,7 @@
   <p>A vocal toning companion. Hum or sing along to the sacred frequencies
      and feel your Chakras awaken. We welcome you and honor you, Namaste.</p>
   <div class="cta" style="display:flex;gap:.7rem;flex-wrap:wrap;justify-content:center">
-    <button class="b solid" id="vQuiz">Find my Tone</button>
-    <button class="b" id="vJourney">Chakra Journey</button>
-    <button class="b" id="vMic">Vocal Lab</button>
+    <button class="b solid" id="vJourney">Chakra Journey</button>
   </div>
   <p class="priv">Everything runs in your browser. Your voice is never recorded, stored, or uploaded.</p>
 </div>
@@ -498,10 +496,8 @@ async function useMic(){
   if(micPending) return;
   if(engine.running){ stopMic(); return; }
   micPending=true;
-  const vb=document.getElementById('vMic'), vTxt=vb.textContent;
-  vb.textContent='Connecting…';
   const ok=await engine.start();
-  micPending=false; vb.textContent=vTxt;
+  micPending=false;
   if(!ok){ alert('Mic unavailable — check browser permissions.'); return; }
   actx=engine.audioContext; SR=engine.sampleRate;
   claimAudio();
@@ -955,7 +951,7 @@ function qResult(){
   $('qFill').style.width='100%';
   $('qSkip').style.visibility=''; $('qSkip').textContent='Walk it again';
   $('qNext').textContent='Begin toning';
-  syncUI(); veilRefresh();
+  syncUI();
 }
 
 /* ---------- chakra journey ----------
@@ -1078,9 +1074,7 @@ function jrNext(){                        // this chakra finished (3 tones or NE
 function jrComplete(early){
   jr.active=false; droneSet(false); orbOverride=null;
   $('jBanner').classList.add('hide');
-  $('jDock').classList.add('hide'); dock.classList.remove('hide');
-  $('dDetails').style.display='';
-  syncUI();                              // dock returns with the current note
+  $('jDock').classList.add('hide');      // dock stays hidden: journey is the whole app for now
   ovlMode='jr'; jr.ui='done';
   $('quiz').classList.remove('hide'); $('qDots').innerHTML='';
   const scored=jr.scores.filter(s=>s.coh>0);
@@ -1106,10 +1100,9 @@ function jrAbort(){
   if(!jr.active) return;
   jr.active=false; orbOverride=null;
   $('jBanner').classList.add('hide');
-  $('jDock').classList.add('hide'); dock.classList.remove('hide');
-  $('dDetails').style.display='';
+  $('jDock').classList.add('hide');
   if(droneOn) droneSet(false);
-  syncUI();
+  goHome();
 }
 function jrTick(){
   if(jr.phase==='done'){ jrDoneTick(); return; }  // centre complete: gentle wind-down
@@ -1159,7 +1152,7 @@ function jrProgress(){
 
 /* ---------- wiring ---------- */
 const veil=$('veil'), dock=$('dock');
-function reveal(){ veil.classList.add('gone'); lab.classList.remove('hide'); dock.classList.remove('hide'); }
+function reveal(){ veil.classList.add('gone'); lab.classList.remove('hide'); }   // dock stays shelved with the lab
 function goHome(){                       // journey over: back to the front page
   $('quiz').classList.add('hide');
   if(engine.running) stopMic();
@@ -1182,22 +1175,10 @@ function tuneToggle(){
   if(droneOn) droneSet(true);          // re-pitch a sounding drone immediately
   syncUI();
 }
-function veilRefresh(){
-  const vq=$('vQuiz'), vm=$('vMic');
-  // fixed labels; once a home note is known the lab becomes the primary path
-  if(homeNote){
-    vm.classList.add('solid'); vq.classList.remove('solid');
-    vm.textContent='Vocal Lab · '+dispName(homeNote);
-  } else {
-    vq.classList.add('solid'); vm.classList.remove('solid');
-    vm.textContent='Vocal Lab';
-  }
-}
 async function quizEntry(){
   if(!engine.running) await useMic();
   if(engine.running) quizStart();
 }
-$('vQuiz').onclick=quizEntry;
 $('dQuiz').onclick=quizEntry;
 $('qClose').onclick=()=>{
   if(ovlMode==='jr'){ jr.ui==='done'?goHome():$('quiz').classList.add('hide'); }
@@ -1231,7 +1212,6 @@ $('jEnd').onclick=()=>{
   if(jr.n>0) jrRecord();
   jrComplete(jr.mode==='full'&&jr.scores.length<7);
 };
-$('vMic').onclick=useMic;
 $('dMic').onclick=useMic;
 $('dDrone').onclick=()=>droneSet(!droneOn);
 $('dNoteDn').onclick=()=>droneStep(-1);
@@ -1267,7 +1247,6 @@ engine.onFrame(()=>{
 
 // go — claim audio focus on arrival so a forgotten gong tab goes quiet immediately
 claimAudio();
-veilRefresh();
 resize(); syncUI(); requestAnimationFrame(draw);
 })();
 </script>

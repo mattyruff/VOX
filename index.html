@@ -9,7 +9,7 @@
 <meta property="og:description" content="Tone the seven chakras with a shruti drone and watch your voice bloom — colour, breath, and resonance, alive in real time.">
 <meta name="theme-color" content="#04070a">
 <title>Vox — Vocal Toning</title>
-<meta name="vox-version" content="0.6.1">
+<meta name="vox-version" content="0.6.2">
 <style>
   :root{
     --void:#04070a; --ink:#d9e6e2; --muted:#6f8580;
@@ -72,28 +72,22 @@
     opacity:.9;transition:opacity .4s}
   #cohBarL{left:-46px}
   #cohBarR{right:-46px}
-  /* the indicator: a chevron that points toward the green — sharp points down,
-     flat points up — and melts into a glowing dot once the tone settles */
-  .cohInd{position:absolute;left:50%;top:50%;width:23px;height:23px;
-    transform:translate(-50%,-50%);color:rgba(255,255,255,.95);
-    filter:drop-shadow(0 1px 4px rgba(0,0,0,.75));
-    transition:top .16s linear, color .3s, filter .3s, opacity .4s}
-  .cohInd svg{width:100%;height:100%;display:block;transition:transform .35s ease}
-  .cohInd .chev{fill:none;stroke:currentColor;stroke-width:3.6;stroke-linecap:round;
-    stroke-linejoin:round;transition:opacity .25s}
-  .cohInd .dotc{fill:#2ab86b;opacity:0;transition:opacity .25s}
-  .cohInd.up svg{transform:rotate(180deg)}
-  .cohInd.locked .chev{opacity:0}
-  .cohInd.locked .dotc{opacity:1}
-  .cohInd.locked{color:#2ab86b;animation:lockGlow 1.6s ease-in-out infinite}
-  @keyframes lockGlow{
-    0%,100%{filter:drop-shadow(0 0 6px rgba(42,184,107,1)) drop-shadow(0 0 14px rgba(42,184,107,.7))}
-    50%{filter:drop-shadow(0 0 10px rgba(42,184,107,1)) drop-shadow(0 0 26px rgba(42,184,107,.95))}
+  /* no indicator shape: the zone holding the pitch glows instead.
+     sharp -> upper yellow, in tune -> green, flat -> lower yellow */
+  .zone{position:absolute;left:0;right:0;opacity:0;pointer-events:none;
+    transition:opacity .35s ease, box-shadow .35s ease}
+  .zTop{top:0;height:30%;background:#f8cd22;border-radius:999px 999px 0 0}
+  .zMid{top:30%;height:40%;background:#2ab86b}
+  .zBot{top:70%;height:30%;background:#f8cd22;border-radius:0 0 999px 999px}
+  .zTop.on,.zBot.on{opacity:1;box-shadow:0 0 14px 4px rgba(248,205,34,.8)}
+  .zMid.on{opacity:1;animation:greenGlow 1.6s ease-in-out infinite}
+  @keyframes greenGlow{
+    0%,100%{box-shadow:0 0 12px 3px rgba(42,184,107,.75)}
+    50%{box-shadow:0 0 22px 7px rgba(42,184,107,.95)}
   }
   @media (prefers-reduced-motion:reduce){
-    .cohInd.locked{animation:none;filter:drop-shadow(0 0 10px rgba(42,184,107,1)) drop-shadow(0 0 20px rgba(42,184,107,.85))}
+    .zMid.on{animation:none;box-shadow:0 0 18px 5px rgba(42,184,107,.9)}
   }
-  .cohInd.idle{opacity:.3}
 
   #orbWrap{position:relative;display:flex;flex-direction:column;align-items:center;gap:.35rem;margin:.1rem 0}
   #orb{width:min(250px,60vw);aspect-ratio:1;display:block}
@@ -168,7 +162,6 @@
     .cohBar{width:16px}
     #cohBarL{left:-76px}
     #cohBarR{right:-76px}
-    .cohInd{width:30px;height:30px}
     #orb{width:min(500px,52vh)}
     #cohNum{font-size:3.1rem}
     #cohWord{font-size:.78rem}
@@ -312,8 +305,8 @@
   </div>
   <div id="orbWrap">
     <canvas id="orb"></canvas>
-    <div class="cohBar" id="cohBarL"><div class="cohInd"><svg viewBox="0 0 24 24"><path class="chev" d="M6 9l6 6 6-6"/><circle class="dotc" cx="12" cy="12" r="6.5"/></svg></div></div>
-    <div class="cohBar" id="cohBarR"><div class="cohInd"><svg viewBox="0 0 24 24"><path class="chev" d="M6 9l6 6 6-6"/><circle class="dotc" cx="12" cy="12" r="6.5"/></svg></div></div>
+    <div class="cohBar" id="cohBarL"><div class="zone zTop"></div><div class="zone zMid"></div><div class="zone zBot"></div></div>
+    <div class="cohBar" id="cohBarR"><div class="zone zTop"></div><div class="zone zMid"></div><div class="zone zBot"></div></div>
     <div id="orbTxt"><div id="cohNum">—</div><div id="cohWord">&nbsp;</div></div>
   </div>
   <button id="dDetails">· details ·</button>
@@ -557,8 +550,15 @@ const $=id=>document.getElementById(id);
 const lab=$('lab'), orb=$('orb'), octx=orb.getContext('2d');
 const strip=$('strip'), sctx=strip.getContext('2d');
 const drawer=$('drawer');
-const cohInds=[...document.querySelectorAll('.cohInd')];
-let barPos=50;                 // indicator position, damped like a spirit-level bubble
+const zTops=[...document.querySelectorAll('.zTop')];
+const zMids=[...document.querySelectorAll('.zMid')];
+const zBots=[...document.querySelectorAll('.zBot')];
+const zoneGlow=z=>{            // z: 0 sharp / 1 in tune / 2 flat / -1 silent
+  zTops.forEach(e=>e.classList.toggle('on',z===0));
+  zMids.forEach(e=>e.classList.toggle('on',z===1));
+  zBots.forEach(e=>e.classList.toggle('on',z===2));
+};
+let barPos=50;                 // invisible pitch position, damped like a spirit-level bubble
 // chakra colours by pitch class, classic chart: C root red -> B crown purple.
 // Accidentals (in-between hums) blend their neighbours and carry no chakra name.
 const CHAKRAS=[
@@ -672,19 +672,13 @@ function updateDOM(){
     $('chakName').style.color=CHAKRAS[pc][0];
     $('noteBig').textContent=NOTES[pc];
     $('hzTxt').textContent=eng.f0.toFixed(1)+' Hz'+(jr.active?'':(Math.abs(cents)>120?'':(cents?'  ·  '+(cents>0?'+':'')+cents+'¢':'  ·  in tune')));
-    // coherence bars: the chevron drifts like a spirit-level bubble — sharp above
-    // centre pointing down, flat below pointing up. A coherent voice (70+) is held
-    // within the green band; settling within 15 cents melts it into the glow dot.
+    // coherence bars: the zone holding the (invisible, damped) pitch position
+    // glows — upper yellow when sharp, lower when flat. A coherent voice (70+)
+    // is held within the green band, so the green glows.
     let target=50-clamp(cents,-60,60)/60*50;
     if(eng.cohShow>=70) target=clamp(target,32,68);
     barPos+=(target-barPos)*0.28;
-    const locked=Math.abs(cents)<=15&&eng.cohShow>=70;
-    cohInds.forEach(ind=>{
-      ind.classList.remove('idle');
-      ind.style.top=barPos.toFixed(1)+'%';
-      ind.classList.toggle('locked',locked);
-      ind.classList.toggle('up',cents<0);
-    });
+    zoneGlow(barPos<30?0:(barPos<=70?1:2));
     $('cohNum').textContent=Math.round(eng.cohShow);
     const lp=lockedPC();
     const hue=CHAKRAS[lp!=null?lp:pc][0];
@@ -706,11 +700,8 @@ function updateDOM(){
     $('noteBig').textContent='—'; $('noteBig').style.color='';
     $('chakName').textContent=' '; $('chakName').style.color='';
     $('hzTxt').textContent=engine.running?'listening…':'mic off';
-    barPos+=(50-barPos)*0.2;                 // bubble settles home
-    cohInds.forEach(ind=>{
-      ind.classList.add('idle'); ind.classList.remove('locked','up');
-      ind.style.top=barPos.toFixed(1)+'%';
-    });
+    barPos+=(50-barPos)*0.2;                 // pitch position settles home
+    zoneGlow(-1);                            // silence: no glow
     $('cohNum').textContent=eng.cohShow>1?Math.round(eng.cohShow):'—';
     $('cohNum').style.color='';
     $('cohWord').textContent=engine.running?'resting':'\u00a0';

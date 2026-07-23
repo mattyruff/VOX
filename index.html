@@ -9,7 +9,7 @@
 <meta property="og:description" content="A vocal toning companion. Hum or sing along to the sacred frequencies and feel your Chakras awaken. We welcome you and honor you, Namaste.">
 <meta name="theme-color" content="#04070a">
 <title>Vox — Vocal Toning</title>
-<meta name="vox-version" content="0.9.1">
+<meta name="vox-version" content="0.9.2">
 <style>
   :root{
     --void:#04070a; --ink:#d9e6e2; --muted:#6f8580;
@@ -313,6 +313,10 @@
   #qCard.single{min-height:min(680px,82vh);justify-content:space-evenly}
   #qCard.single #qTitle{font-size:1.35rem}
   #qCard.single #qText{font-size:.92rem;max-width:42ch}
+  #qCard.single #qNote,#qCard.single #qSub{display:none}   /* no phantom gaps */
+  #qCard.single #qChips{flex:1;display:flex;align-items:center;justify-content:center;width:100%}
+  #qCard.single #qSkip{display:none}                       /* no ghost flex space */
+  #qCard.single #qBtns{justify-content:center;width:100%}
   #qBar{width:70%;height:3px;background:rgba(79,216,196,.14);border-radius:2px;overflow:hidden}
 
   /* ---------- chakra journey banner ---------- */
@@ -1130,7 +1134,7 @@ function jrComplete(early){
         : (best
           ? 'Your voice glowed brightest at the '+CHAKRA_SEQ[best.i][1]+' ('+CHAKRA_SEQ[best.i][2]+'), coherence '+Math.round(best.coh)+'.'
           : 'A quiet one — Vox barely heard your voice this time.'))
-      : 'You have honored your '+sen+' centre with focused sound. Take a moment to notice how this space feels within you. Below is your "coherence" value — a tool for your own awareness and reference, never a judgment.';
+      : 'Your attention to your '+sen+' Chakra will not go unnoticed, take a moment to hold onto this awareness. Below is your "coherence" value for this session. Remember this is a tool for reference not judgement, there is no perfection only progress.';
   $('qNote').textContent=''; $('qSub').textContent=''; $('qFill').style.width='0';
   const ch=$('qChips'); ch.hidden=false; ch.innerHTML=''; ch.style.flexDirection='';
   if(jr.mode==='full'){
@@ -1150,10 +1154,15 @@ function jrComplete(early){
     ch.appendChild(d);
   }
   $('qSkip').style.visibility='hidden';
+  const qn=$('qNext');
   if(jr.mode==='full'){
-    $('qNext').style.visibility='hidden';   // exit is the ✕ top-right only
+    qn.style.visibility='hidden';           // exit is the ✕ top-right only
+    qn.style.background=''; qn.style.borderColor=''; qn.style.color='';
   } else {
-    $('qNext').style.visibility=''; $('qNext').textContent='GO AGAIN';
+    qn.style.visibility=''; qn.textContent='GO AGAIN';
+    qn.style.background=CHAKRAS[spc][0];    // the chip wears the centre's colour
+    qn.style.borderColor=CHAKRAS[spc][0];
+    qn.style.color='#04211c';
   }
 }
 function jrAbort(){

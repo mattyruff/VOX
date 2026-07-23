@@ -9,7 +9,7 @@
 <meta property="og:description" content="A vocal toning companion. Hum or sing along to the sacred frequencies and feel your Chakras awaken. We welcome you and honor you, Namaste.">
 <meta name="theme-color" content="#04070a">
 <title>Vox — Vocal Toning</title>
-<meta name="vox-version" content="0.8.4">
+<meta name="vox-version" content="0.8.5">
 <style>
   :root{
     --void:#04070a; --ink:#d9e6e2; --muted:#6f8580;
@@ -1105,10 +1105,11 @@ function jrComplete(early){
   const scored=jr.scores.filter(s=>s.coh>0);
   const best=scored.slice().sort((a,b)=>b.coh-a.coh)[0];
   $('qTitle').textContent=jr.mode==='full'?(early?'Journey ended':'Journey complete'):'Toning complete';
-  $('qText').textContent=best
-    ? 'Your voice glowed brightest at the '+CHAKRA_SEQ[best.i][1]+' ('+CHAKRA_SEQ[best.i][2]+'), coherence '+Math.round(best.coh)+'.'
-      +(jr.mode==='full'&&!early?' All seven centres, root to crown — beautifully done.':'')
-    : 'A quiet one — Vox barely heard your voice this time.';
+  $('qText').textContent=(jr.mode==='full'&&!early)
+    ? 'Congratulations, you have taken time to honor your SELF. Your bravery is commendable and worth noting. By connecting with your voice you have opened a door to your inner Universe. May your day be filled with magic and synchronicity. Below you will find your "coherence" values for each Chakra. Remember these numbers are not here to judge your efforts. They are merely a tool for your own awareness and reference.'
+    : (best
+      ? 'Your voice glowed brightest at the '+CHAKRA_SEQ[best.i][1]+' ('+CHAKRA_SEQ[best.i][2]+'), coherence '+Math.round(best.coh)+'.'
+      : 'A quiet one — Vox barely heard your voice this time.');
   $('qNote').textContent=''; $('qSub').textContent=''; $('qFill').style.width='0';
   const ch=$('qChips'); ch.hidden=false; ch.innerHTML=''; ch.style.flexDirection='';
   jr.scores.forEach(s=>{
@@ -1119,7 +1120,7 @@ function jrComplete(early){
     ch.appendChild(d);
   });
   $('qSkip').style.visibility='hidden';
-  $('qNext').style.visibility=''; $('qNext').textContent='Close';
+  $('qNext').style.visibility='hidden';   // exit is the ✕ top-right only
 }
 function jrAbort(){
   if(!jr.active) return;

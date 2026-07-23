@@ -9,7 +9,7 @@
 <meta property="og:description" content="A vocal toning companion. Hum or sing along to the sacred frequencies and feel your Chakras awaken. We welcome you and honor you, Namaste.">
 <meta name="theme-color" content="#04070a">
 <title>Vox — Vocal Toning</title>
-<meta name="vox-version" content="0.8.5">
+<meta name="vox-version" content="0.9.0">
 <style>
   :root{
     --void:#04070a; --ink:#d9e6e2; --muted:#6f8580;
@@ -997,8 +997,9 @@ const CHAKRA_SEQ=[
   [5,'Heart','Anahata'],[7,'Throat','Vishuddha'],[9,'Third Eye','Ajna'],[11,'Crown','Sahasrara'],
 ];
 // phase: 'ready' (drone off, waiting for play) | 'run' (droning, counting hums)
-// | 'done' (3rd tone credited; doneStep 'toning' -> 'still' winds the centre down).
+// | 'done' (final tone credited; doneStep 'toning' -> 'still' winds the centre down).
 const jr={active:false,mode:'',idx:0,phase:'ready',hums:0,humDone:false,doneStep:'',doneT:0,acc:0,n:0,scores:[],ui:''};
+const jrTarget=()=>jr.mode==='full'?3:5;   // tones per centre: 3 on the walk, 5 dwelling
 let ovlMode='quiz';
 
 function chime(m){                       // soft bell in the incoming chakra's pitch
@@ -1055,6 +1056,7 @@ function jrEnter(){
   if(droneOn) droneSet(false);
   $('jDot').style.background=CHAKRAS[pc][0]; $('jDot').style.color=CHAKRAS[pc][0];
   $('jName').textContent=sk+' — '+en+' · '+NOTES[pc];
+  $('jHums').innerHTML='<i></i>'.repeat(jrTarget());
   jrHumDots(); jrPlayUI(); jrSub('press play to begin');
 }
 function jrSub(tail){
@@ -1104,12 +1106,16 @@ function jrComplete(early){
   $('quiz').classList.remove('hide'); $('qDots').innerHTML='';
   const scored=jr.scores.filter(s=>s.coh>0);
   const best=scored.slice().sort((a,b)=>b.coh-a.coh)[0];
-  $('qTitle').textContent=jr.mode==='full'?(early?'Journey ended':'Journey complete'):'Toning complete';
-  $('qText').textContent=(jr.mode==='full'&&!early)
-    ? 'Congratulations, you have taken time to honor your SELF. Your bravery is commendable and worth noting. By connecting with your voice you have opened a door to your inner Universe. May your day be filled with magic and synchronicity. Below you will find your "coherence" values for each Chakra. Remember these numbers are not here to judge your efforts. They are merely a tool for your own awareness and reference.'
-    : (best
-      ? 'Your voice glowed brightest at the '+CHAKRA_SEQ[best.i][1]+' ('+CHAKRA_SEQ[best.i][2]+'), coherence '+Math.round(best.coh)+'.'
-      : 'A quiet one — Vox barely heard your voice this time.');
+  const [spc,sen,ssk]=CHAKRA_SEQ[jr.idx];
+  $('qTitle').textContent=jr.mode==='full'?(early?'Journey ended':'Journey complete'):(ssk+' — '+sen);
+  $('qText').textContent=
+    jr.mode==='full'
+      ? (!early
+        ? 'Congratulations, you have taken time to honor your SELF. Your bravery is commendable and worth noting. By connecting with your voice you have opened a door to your inner Universe. May your day be filled with magic and synchronicity. Below you will find your "coherence" values for each Chakra. Remember these numbers are not here to judge your efforts. They are merely a tool for your own awareness and reference.'
+        : (best
+          ? 'Your voice glowed brightest at the '+CHAKRA_SEQ[best.i][1]+' ('+CHAKRA_SEQ[best.i][2]+'), coherence '+Math.round(best.coh)+'.'
+          : 'A quiet one — Vox barely heard your voice this time.'))
+      : 'You have honored your '+sen+' centre with focused sound. Take a moment to notice how this space feels within you. Below is your "coherence" value — a tool for your own awareness and reference, never a judgment.';
   $('qNote').textContent=''; $('qSub').textContent=''; $('qFill').style.width='0';
   const ch=$('qChips'); ch.hidden=false; ch.innerHTML=''; ch.style.flexDirection='';
   jr.scores.forEach(s=>{
@@ -1120,7 +1126,11 @@ function jrComplete(early){
     ch.appendChild(d);
   });
   $('qSkip').style.visibility='hidden';
-  $('qNext').style.visibility='hidden';   // exit is the ✕ top-right only
+  if(jr.mode==='full'){
+    $('qNext').style.visibility='hidden';   // exit is the ✕ top-right only
+  } else {
+    $('qNext').style.visibility=''; $('qNext').textContent='GO AGAIN';
+  }
 }
 function jrAbort(){
   if(!jr.active) return;
@@ -1138,7 +1148,7 @@ function jrTick(){
   if(eng.voiced&&!jr.humDone&&eng.breath>=HUM){
     jr.humDone=true; jr.hums++;                   // one credit per continuous tone
     jrHumDots();
-    if(jr.hums>=3){                               // third tone: drone stays with the voice
+    if(jr.hums>=jrTarget()){                      // final tone: drone stays with the voice
       jr.phase='done'; jr.doneStep='toning'; jr.doneT=performance.now();
       jrSub('beautiful — let it fade');
       return;
@@ -1216,8 +1226,9 @@ $('qSkip').onclick=()=>{
 };
 $('qNext').onclick=()=>{
   if(ovlMode==='jr'){
-    if(jr.ui==='done') goHome();
-    else $('quiz').classList.add('hide');
+    if(jr.ui==='done'){
+      jr.mode==='full'?goHome():jrBegin('single',jr.idx);   // GO AGAIN repeats the centre
+    } else $('quiz').classList.add('hide');
     return;
   }
   if(quiz.step===99){ quizEnd(); return; }

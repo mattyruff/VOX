@@ -9,7 +9,7 @@
 <meta property="og:description" content="A vocal toning companion. Hum or sing along to the sacred frequencies and feel your Chakras awaken. We welcome you and honor you, Namaste.">
 <meta name="theme-color" content="#04070a">
 <title>Vox — Vocal Toning</title>
-<meta name="vox-version" content="0.9.0">
+<meta name="vox-version" content="0.9.1">
 <style>
   :root{
     --void:#04070a; --ink:#d9e6e2; --muted:#6f8580;
@@ -221,6 +221,10 @@
     #qNote{font-size:4rem}
     #qSub{font-size:.85rem}
     .qchip{font-size:.9rem;padding:.55rem 1.1rem}
+    .qEclipse{width:160px;height:160px}
+    .qEclipse span{font-size:2.8rem}
+    #qCard.single #qTitle{font-size:1.6rem}
+    #qCard.single #qText{font-size:1.02rem}
   }
 
   /* ---------- summary ---------- */
@@ -300,6 +304,15 @@
   button.qchip:hover{background:rgba(79,216,196,.1)}
   .qchip b{color:var(--aqua);font-weight:400}
   .qchip.best{border-color:var(--aqua-deep);background:rgba(79,216,196,.08)}
+  /* single-session score: a mini eclipse in the centre's colour */
+  .qEclipse{width:130px;height:130px;border-radius:50%;background:#000;flex:none;
+    border:2px solid currentColor;display:flex;align-items:center;justify-content:center;
+    box-shadow:0 0 18px 4px currentColor, 0 0 48px 16px color-mix(in srgb, currentColor 40%, transparent);
+    margin:.4rem auto}
+  .qEclipse span{font-weight:200;font-size:2.4rem;color:currentColor;letter-spacing:.02em}
+  #qCard.single{min-height:min(680px,82vh);justify-content:space-evenly}
+  #qCard.single #qTitle{font-size:1.35rem}
+  #qCard.single #qText{font-size:.92rem;max-width:42ch}
   #qBar{width:70%;height:3px;background:rgba(79,216,196,.14);border-radius:2px;overflow:hidden}
 
   /* ---------- chakra journey banner ---------- */
@@ -1108,6 +1121,8 @@ function jrComplete(early){
   const best=scored.slice().sort((a,b)=>b.coh-a.coh)[0];
   const [spc,sen,ssk]=CHAKRA_SEQ[jr.idx];
   $('qTitle').textContent=jr.mode==='full'?(early?'Journey ended':'Journey complete'):(ssk+' — '+sen);
+  $('qTitle').style.color=jr.mode==='full'?'':CHAKRAS[spc][0];   // title wears the centre's colour
+  $('qCard').classList.toggle('single',jr.mode!=='full');        // singles stretch to fill
   $('qText').textContent=
     jr.mode==='full'
       ? (!early
@@ -1118,13 +1133,22 @@ function jrComplete(early){
       : 'You have honored your '+sen+' centre with focused sound. Take a moment to notice how this space feels within you. Below is your "coherence" value — a tool for your own awareness and reference, never a judgment.';
   $('qNote').textContent=''; $('qSub').textContent=''; $('qFill').style.width='0';
   const ch=$('qChips'); ch.hidden=false; ch.innerHTML=''; ch.style.flexDirection='';
-  jr.scores.forEach(s=>{
-    const [pc,en]=CHAKRA_SEQ[s.i];
+  if(jr.mode==='full'){
+    jr.scores.forEach(s=>{
+      const [pc,en]=CHAKRA_SEQ[s.i];
+      const d=document.createElement('div');
+      d.className='qchip'+(best&&s.i===best.i?' best':'');
+      d.innerHTML='<span style="color:'+CHAKRAS[pc][0]+'">'+en+'</span> <b>'+(s.coh>0?Math.round(s.coh):'—')+'</b>';
+      ch.appendChild(d);
+    });
+  } else {
+    // the score inside a mini eclipse, number only, wearing the centre's colour
+    const s=jr.scores[0];
     const d=document.createElement('div');
-    d.className='qchip'+(best&&s.i===best.i?' best':'');
-    d.innerHTML='<span style="color:'+CHAKRAS[pc][0]+'">'+en+'</span> <b>'+(s.coh>0?Math.round(s.coh):'—')+'</b>';
+    d.className='qEclipse'; d.style.color=CHAKRAS[spc][0];
+    d.innerHTML='<span>'+(s&&s.coh>0?Math.round(s.coh):'—')+'</span>';
     ch.appendChild(d);
-  });
+  }
   $('qSkip').style.visibility='hidden';
   if(jr.mode==='full'){
     $('qNext').style.visibility='hidden';   // exit is the ✕ top-right only

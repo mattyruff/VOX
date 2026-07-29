@@ -46,6 +46,12 @@ function vowelName(f1, f2){
 
 const ACW = 2048;   // autocorrelation window
 
+// voice-gate tuning — all levels are RMS measured after the input boost
+const ANALYSIS_MIN = 0.0015;  // below this a frame is true silence; skip the pitch work
+const GATE_MIN     = 0.004;   // the quietest voice we accept outright (quiet desktop mics)
+const FLOOR_MULT   = 2.2;     // gate = noise floor x this; periodicity does the real work
+const FLOOR_MAX    = 0.008;   // hard cap so noise can never run the gate away
+
 class VoxEngine {
   constructor(opts){
     opts = opts || {};
@@ -256,18 +262,26 @@ class VoxEngine {
     const rms=Math.sqrt(s/td.length);
     eng.lvl+=(rms-eng.lvl)*0.3;
 
-    // pitch + periodicity
-    const gate=Math.max(eng.floor*3.5, 0.006);
+    // pitch + periodicity — measured whenever there is anything at all to measure,
+    // not merely above the gate, so the floor logic below can tell a voice from noise
     let p={f0:0,r:0};
-    if(rms>gate) p=this.trackPitch();
+    if(rms>ANALYSIS_MIN) p=this.trackPitch();
+    const periodic=p.r>0.5;                       // a voice or a drone; never room noise
 
-    // voice activity detection: energy above adaptive floor AND periodic
+    // voice activity detection: energy above the adaptive floor AND periodic
+    const gate=Math.max(eng.floor*FLOOR_MULT, GATE_MIN);
     const voicedNow=(rms>gate && p.r>0.60 && p.f0>=70 && p.f0<=800);
     if(voicedNow) eng.vadHold=14;                 // ~0.25s hangover
     else if(eng.vadHold>0) eng.vadHold--;
     const wasVoiced=eng.voiced;
     eng.voiced=eng.vadHold>0;
-    if(!eng.voiced) eng.floor+=(rms-eng.floor)*0.02;   // learn the noise floor in silence
+    // Learn the noise floor ONLY from aperiodic quiet. Adapting while the user was
+    // voicing-but-undetected let the gate chase their own voice upward and lock them
+    // out for good. Rises slowly, falls quickly, and is capped.
+    if(!eng.voiced && !periodic){
+      eng.floor+=(rms-eng.floor)*(rms>eng.floor?0.008:0.05);
+      if(eng.floor>FLOOR_MAX) eng.floor=FLOOR_MAX;
+    }
 
     // tone segmentation
     if(eng.voiced&&!wasVoiced) this.beginTone();

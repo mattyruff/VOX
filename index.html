@@ -9,7 +9,7 @@
 <meta property="og:description" content="Discover the calming practice of vocal toning.">
 <meta name="theme-color" content="#04070a">
 <title>Vox — Vocal Toning</title>
-<meta name="vox-version" content="0.11.1">
+<meta name="vox-version" content="0.11.2">
 <style>
   /* Cormorant Garamond — SIL OFL, self-hosted so nothing is fetched off-origin
      (see fonts/OFL.txt) */
@@ -1137,6 +1137,7 @@ function jrPlayToggle(){
   if(!jr.active||jr.phase==='done') return;
   if(jr.phase==='run'){
     jr.phase='ready'; droneSet(false); jrSub('paused — press play');
+    jr.tonePeak=0; jr.humDone=false;      // a tone interrupted by pause starts over
   } else {
     jr.phase='run';
     setDroneMidi(chakraOct+CHAKRA_SEQ[jr.idx][0]); droneSet(true);
@@ -1149,6 +1150,7 @@ function jrRecord(){
   jr.scores.push({i:jr.idx, coh:p.length?p.reduce((a,b)=>a+b,0)/p.length:0});
 }
 function jrNext(){                        // this chakra finished (3 tones or NEXT)
+  if(jr.tonePeak>0) jrBankPeak();         // don't lose a tone still sounding
   jrRecord();
   if(jr.idx>=6||jr.mode!=='full'){ jrComplete(jr.mode==='full'&&jr.scores.length<7); return; }
   droneSet(false);

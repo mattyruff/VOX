@@ -1,5 +1,6 @@
 /* =====================================================================
-   VOX LISTENING ENGINE v0.2.0 — tuned for the singing voice.
+   VOX LISTENING ENGINE — tuned for the singing voice.
+   (Versioned with the app: see the vox-version meta in index.html.)
 
    A self-contained, DOM-free vocal-analysis engine. It owns the
    microphone + Web Audio graph and runs the DSP pipeline:
@@ -159,6 +160,11 @@ class VoxEngine {
     if(this.micStream){ this.micStream.getTracks().forEach(t=>t.stop()); this.micStream=null; }
     this.mode='idle';
     this.endTone();
+    // halt the analysis loop and clear voice-activity state, so a stopped engine
+    // costs nothing and a restart can't inherit a phantom "voiced" moment
+    if(this._loopTimer){ clearTimeout(this._loopTimer); this._loopTimer=null; }
+    this._looping = false;
+    this.state.voiced = false; this.state.vadHold = 0; this.state.breath = 0;
   }
 
   _startLoop(){
@@ -166,7 +172,8 @@ class VoxEngine {
     this._looping = true;
     const tick = () => {
       this.analyze();
-      this._loopTimer = setTimeout(tick, document.hidden ? 250 : (this._mobile ? 33 : 1000/60));
+      if(this._looping)                    // stop() may have been called mid-frame
+        this._loopTimer = setTimeout(tick, document.hidden ? 250 : (this._mobile ? 33 : 1000/60));
     };
     tick();
   }

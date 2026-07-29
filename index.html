@@ -9,7 +9,7 @@
 <meta property="og:description" content="Discover the calming practice of vocal toning.">
 <meta name="theme-color" content="#04070a">
 <title>Vox — Vocal Toning</title>
-<meta name="vox-version" content="0.10.0">
+<meta name="vox-version" content="0.11.0">
 <style>
   /* Cormorant Garamond — SIL OFL, self-hosted so nothing is fetched off-origin
      (see fonts/OFL.txt) */
@@ -600,23 +600,33 @@ function shrutiWave(){
   }
   return actx.createPeriodicWave(re,im);
 }
-function droneStop(fast){
+const DRONE_FADE=4;             // seconds — the long dying-away at a centre's end
+function droneStop(fast,rel){
   if(!droneNodes) return;
   const d=droneNodes; droneNodes=null;
-  const t=actx.currentTime, rel=fast?0.08:0.4;
+  const t=actx.currentTime;
+  rel=rel||(fast?0.08:0.4);
   try{
-    d.master.gain.cancelScheduledValues(t);
-    d.master.gain.setValueAtTime(d.master.gain.value,t);
-    d.master.gain.linearRampToValueAtTime(0,t+rel);
+    const g=d.master.gain;
+    const v0=Math.max(g.value,0.0001);
+    g.cancelScheduledValues(t);
+    g.setValueAtTime(v0,t);
+    // Exponential (linear in dB) reads as a natural dying-away where a linear ramp
+    // drops fast then lingers. The floor is ~37dB down rather than silence, so the
+    // drone stays faintly audible across the whole fade instead of vanishing early;
+    // the last moments then ease to true zero without a click.
+    const floor=Math.max(v0*0.014,0.00005);
+    g.exponentialRampToValueAtTime(floor,Math.max(t+rel-0.06,t+0.01));
+    g.linearRampToValueAtTime(0,t+rel);
   }catch(e){}
   setTimeout(()=>{
     d.stops.forEach(o=>{try{o.stop();}catch(e){}});
     try{d.master.disconnect();}catch(e){}
-  }, rel*1000+80);
+  }, rel*1000+120);
 }
-function droneSet(on){
+function droneSet(on,rel){
   ensureCtx(); actx.resume();
-  droneStop(droneOn&&on);                       // quick swap when retuning
+  droneStop(droneOn&&on,rel);                   // quick swap when retuning
   droneOn=on;
   if(on){
     if(!shrutiPW) shrutiPW=shrutiWave();
@@ -1037,7 +1047,8 @@ const CHAKRA_SEQ=[
 ];
 // phase: 'ready' (drone off, waiting for play) | 'run' (droning, counting hums)
 // | 'done' (final tone credited; doneStep 'toning' -> 'still' winds the centre down).
-const jr={active:false,mode:'',idx:0,phase:'ready',hums:0,humDone:false,doneStep:'',doneT:0,acc:0,n:0,scores:[],ui:''};
+const jr={active:false,mode:'',idx:0,phase:'ready',hums:0,humDone:false,doneStep:'',doneT:0,
+  peaks:[],tonePeak:0,scores:[],ui:''};
 const jrTarget=()=>jr.mode==='full'?3:5;   // tones per centre: 3 on the walk, 5 dwelling
 let ovlMode='quiz';
 
@@ -1088,7 +1099,7 @@ function journeyStart(mode2,idx){
 }
 // a chakra begins at rest: drone silent, three empty tone dots, waiting on play
 function jrEnter(){
-  jr.phase='ready'; jr.hums=0; jr.humDone=false; jr.acc=0; jr.n=0;
+  jr.phase='ready'; jr.hums=0; jr.humDone=false; jr.peaks=[]; jr.tonePeak=0;
   const [pc,en,sk]=CHAKRA_SEQ[jr.idx];
   orbOverride=pc;
   setDroneMidi(chakraOct+pc);
@@ -1127,7 +1138,8 @@ function jrPlayToggle(){
   jrPlayUI();
 }
 function jrRecord(){
-  jr.scores.push({i:jr.idx, coh:jr.n>50?jr.acc/jr.n:0});
+  const p=jr.peaks;
+  jr.scores.push({i:jr.idx, coh:p.length?p.reduce((a,b)=>a+b,0)/p.length:0});
 }
 function jrNext(){                        // this chakra finished (3 tones or NEXT)
   jrRecord();
@@ -1202,7 +1214,7 @@ function jrTick(){
   if(jr.phase==='done'){ jrDoneTick(); return; }  // centre complete: gentle wind-down
   if(jr.phase!=='run') return;                    // paused / waiting: nothing counts
   const HUM=window.__jrFast?1.5:5;                // seconds a tone must hold
-  if(eng.voiced){ jr.acc+=eng.coh; jr.n++; }
+  if(eng.voiced) jrPeak();
   if(eng.voiced&&!jr.humDone&&eng.breath>=HUM){
     jr.humDone=true; jr.hums++;                   // one credit per continuous tone
     jrHumDots();
@@ -1213,21 +1225,38 @@ function jrTick(){
     }
     jrSub('release, breathe, and sound again');
   }
-  if(!eng.voiced&&jr.humDone) jr.humDone=false;   // silence re-arms the next tone
+  if(!eng.voiced&&jr.humDone){                    // the tone ended: bank its best moment
+    jrBankPeak();
+    jr.humDone=false;                             // silence re-arms the next tone
+  }
+  if(!eng.voiced) jr.tonePeak=0;                  // a false start leaves nothing behind
   jrProgress();
+}
+// score = the best moment of each held tone, averaged. The peak is banked when the
+// voiced stretch ENDS, not at the 5s credit, because the steadiest part of a tone
+// usually comes after it has been held a while.
+function jrPeak(){ if(eng.coh>jr.tonePeak) jr.tonePeak=eng.coh; }
+function jrBankPeak(){
+  if(jr.tonePeak>0) jr.peaks.push(jr.tonePeak);
+  jr.tonePeak=0;
 }
 // after the third tone: drone holds while the voice does; 3s of silence stops the
 // drone; 3s of stillness later the bell initiates the next centre (never auto-playing)
 function jrDoneTick(){
   const W=window.__jrFast?1000:2000;
+  const FADE=(window.__jrFast?1:DRONE_FADE)*1000;
   const now=performance.now();
   if(jr.doneStep==='toning'){
-    if(eng.voiced){ jr.acc+=eng.coh; jr.n++; jr.doneT=now; return; }
+    if(eng.voiced){ jrPeak(); jr.doneT=now; return; }
     if(now-jr.doneT>=W){
-      droneSet(false);
-      jr.doneStep='still'; jr.doneT=now;
-      jrSub('a still breath');
+      jrBankPeak();                             // the final tone's best moment
+      droneSet(false,window.__jrFast?1:DRONE_FADE);
+      jr.doneStep='fading'; jr.doneT=now;
+      jrSub('let it fade');
     }
+  } else if(jr.doneStep==='fading'&&now-jr.doneT>=FADE){
+    jr.doneStep='still'; jr.doneT=now;
+    jrSub('a still breath');
   } else if(jr.doneStep==='still'&&now-jr.doneT>=W){
     jrRecord();
     if(jr.idx>=6||jr.mode!=='full'){ jrComplete(false); return; }
@@ -1303,7 +1332,8 @@ $('jiBegin').onclick=()=>jrBegin('full',0);
 $('jiClose').onclick=()=>$('jIntro').classList.add('hide');
 $('jEnd').onclick=()=>{
   if(!jr.active) return;
-  if(jr.n>0) jrRecord();
+  if(jr.tonePeak>0) jrBankPeak();   // credit a tone still sounding when they exit
+  if(jr.peaks.length) jrRecord();
   jrComplete(jr.mode==='full'&&jr.scores.length<7);
 };
 $('dMic').onclick=useMic;

@@ -2,51 +2,63 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22><circle cx=%2232%22 cy=%2232%22 r=%2226%22 fill=%22none%22 stroke=%22%234fd8c4%22 stroke-width=%224%22/><path d=%22M18 32h6l4-10 8 20 4-10h6%22 fill=%22none%22 stroke=%22%234fd8c4%22 stroke-width=%224%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22/></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22><circle cx=%2232%22 cy=%2232%22 r=%2226%22 fill=%22none%22 stroke=%22%23cba85c%22 stroke-width=%224%22/><path d=%22M18 32h6l4-10 8 20 4-10h6%22 fill=%22none%22 stroke=%22%23cba85c%22 stroke-width=%224%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22/></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<meta name="description" content="Vox — a vocal toning companion. Chakra journeys with a shruti drone, and real-time biofeedback on pitch, breath, clarity and resonance. Runs entirely in your browser; nothing is recorded or uploaded.">
+<meta name="description" content="Vox — discover the calming practice of vocal toning. Tone the seven chakras with a shruti drone and live feedback on pitch and resonance. Runs entirely in your browser; nothing is recorded or uploaded.">
 <meta property="og:title" content="Vox — Vocal Toning">
-<meta property="og:description" content="A vocal toning companion. Hum or sing along to the sacred frequencies and feel your Chakras awaken. We welcome you and honor you, Namaste.">
+<meta property="og:description" content="Discover the calming practice of vocal toning.">
 <meta name="theme-color" content="#04070a">
 <title>Vox — Vocal Toning</title>
-<meta name="vox-version" content="0.9.5">
+<meta name="vox-version" content="0.10.0">
 <style>
+  /* Cormorant Garamond — SIL OFL, self-hosted so nothing is fetched off-origin
+     (see fonts/OFL.txt) */
+  @font-face{font-family:'Cormorant Garamond';font-style:normal;font-weight:300;
+    font-display:swap;src:url(fonts/cormorant-garamond-300.woff2) format('woff2')}
+  @font-face{font-family:'Cormorant Garamond';font-style:normal;font-weight:400;
+    font-display:swap;src:url(fonts/cormorant-garamond-400.woff2) format('woff2')}
   :root{
-    --void:#04070a; --ink:#d9e6e2; --muted:#6f8580;
+    --void:#04070a; --ink:#ded9d0; --muted:#9c968b;
+    --accent:#cba85c; --accent-pale:#f0e0b8; --accent-deep:#6b552a;
+    --accent-rgb:203,168,92;
     --gold:#f5c542; --gold-pale:#ffe9a8; --gold-deep:#7a5a18;
-    --aqua:#4fd8c4; --aqua-pale:#b8f3e9; --aqua-deep:#1a5e54;
-    --violet:#8a7cc9;
-    --line:rgba(79,216,196,.16); --glass:rgba(8,14,13,.55);
+    --line:rgba(203,168,92,.18); --glass:rgba(12,10,7,.55);
+    --font-display:'Cormorant Garamond',Georgia,'Times New Roman',serif;
+    --font-body:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{height:100%;overflow:hidden;background:var(--void);color:var(--ink);
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif;-webkit-font-smoothing:antialiased}
+    font-family:var(--font-body);-webkit-font-smoothing:antialiased}
   body::before{content:"";position:fixed;inset:0;z-index:-1;
-    background:radial-gradient(90% 70% at 50% 30%,#0a161430 0%,#04070a 70%)}
+    background:radial-gradient(90% 70% at 50% 30%,#14100930 0%,#04070a 70%)}
 
   #nav{position:fixed;top:16px;right:16px;z-index:40;display:flex;align-items:center;gap:3px;padding:5px;
     background:var(--glass);border:1px solid var(--line);border-radius:12px;
     backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);transition:opacity .4s ease}
-  #nav a{font:inherit;font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;text-decoration:none;
+  #nav a{font-family:var(--font-display);font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;text-decoration:none;
     color:var(--muted);padding:.42rem .8rem;border-radius:8px;transition:.15s}
-  #nav a:hover{color:var(--aqua-pale);background:rgba(79,216,196,.08)}
-  #nav a.active{color:var(--aqua);background:rgba(79,216,196,.12)}
-  #nav a.home{font-size:1rem;line-height:1;padding:.35rem .58rem;color:var(--aqua)}
+  #nav a:hover{color:var(--accent-pale);background:rgba(var(--accent-rgb),.08)}
+  #nav a.active{color:var(--accent);background:rgba(var(--accent-rgb),.12)}
+  #nav a.home{font-size:1rem;line-height:1;padding:.35rem .58rem;color:var(--accent)}
 
   /* ---------- veil ---------- */
   #veil{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
     gap:1.4rem;background:radial-gradient(120% 90% at 50% 42%,#08131130 0%,#04070a 72%);z-index:30;
     transition:opacity .6s ease;padding:0 6vw;text-align:center}
   #veil.gone{opacity:0;pointer-events:none}
-  #veil h1{font-weight:300;font-size:1.6rem;letter-spacing:.44em;text-transform:uppercase;color:var(--aqua-pale);padding-left:.44em}
-  #veil p{color:var(--muted);font-size:.84rem;letter-spacing:.05em;max-width:40ch;line-height:1.85}
-  #veil .priv{font-size:.68rem;opacity:.7;max-width:44ch}
-  button.b{appearance:none;border:1px solid var(--aqua-deep);background:transparent;color:var(--aqua);
-    font:inherit;font-size:.78rem;letter-spacing:.1em;padding:.66rem 1.5rem;border-radius:999px;cursor:pointer;
-    transition:.18s;text-transform:uppercase}
-  button.b:hover{border-color:var(--aqua);background:rgba(79,216,196,.08);color:var(--aqua-pale)}
-  button.b.solid{background:var(--aqua);color:#04211c;border-color:var(--aqua)}
-  button.b.solid:hover{background:var(--aqua-pale)}
+  #veil h1{font-family:var(--font-display);font-weight:300;font-size:2.6rem;letter-spacing:.42em;
+    text-transform:uppercase;color:var(--accent);padding-left:.42em;line-height:1}
+  #veil p{font-family:var(--font-display);color:var(--accent);
+    font-size:clamp(.8rem,3.7vw,1.05rem);letter-spacing:.14em;
+    text-transform:uppercase;max-width:min(360px,92vw);line-height:1.75;text-wrap:balance}
+  #veil .priv{font-family:var(--font-body);color:var(--muted);font-size:.62rem;letter-spacing:.14em;
+    text-transform:uppercase;opacity:.75;max-width:38ch;line-height:1.9}
+  button.b{appearance:none;border:1px solid var(--accent);background:transparent;color:var(--accent);
+    font-family:var(--font-display);font-size:1rem;letter-spacing:.22em;padding:.8rem 2rem;
+    border-radius:999px;cursor:pointer;transition:.18s;text-transform:uppercase}
+  button.b:hover{border-color:var(--accent);background:rgba(var(--accent-rgb),.08);color:var(--accent-pale)}
+  button.b.solid{background:var(--accent);color:#141009;border-color:var(--accent)}
+  button.b.solid:hover{background:var(--accent-pale)}
 
   /* ---------- lab ---------- */
   #lab{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;z-index:5;
@@ -56,9 +68,9 @@
   #labTop,#labBot{display:flex;flex-direction:column;align-items:center;gap:1rem;width:100%}
 
   #hero{display:flex;align-items:baseline;gap:1.2rem;margin-top:.4rem}
-  #noteBig{font-weight:200;font-size:clamp(3rem,9vw,4.6rem);letter-spacing:.06em;color:var(--aqua-pale);
+  #noteBig{font-family:var(--font-display);font-weight:300;font-size:clamp(3rem,9vw,4.6rem);letter-spacing:.06em;color:var(--accent-pale);
     min-width:1ch;text-align:center;line-height:1}
-  #chakName{font-weight:300;font-size:1rem;letter-spacing:.24em;text-transform:uppercase;
+  #chakName{font-family:var(--font-display);font-weight:400;font-size:1rem;letter-spacing:.24em;text-transform:uppercase;
     color:var(--muted);white-space:nowrap;transition:color .3s}
   #hzTxt{font-size:.85rem;color:var(--muted);letter-spacing:.1em}
   /* coherence bars: vertical pitch meters flanking the orb — green home in the
@@ -93,11 +105,11 @@
   #orbWrap{position:relative;display:flex;flex-direction:column;align-items:center;gap:.35rem;margin:.1rem 0}
   #orb{width:min(250px,60vw);aspect-ratio:1;display:block}
   #orbTxt{display:flex;flex-direction:column;align-items:center;gap:.1rem}
-  #cohNum{font-weight:200;font-size:2rem;color:var(--ink);line-height:1;transition:color .5s}
+  #cohNum{font-family:var(--font-display);font-weight:300;font-size:2rem;color:var(--ink);line-height:1;transition:color .5s}
   #cohWord{font-size:.6rem;letter-spacing:.3em;text-transform:uppercase;color:var(--muted);min-height:1em}
   #dDetails{background:none;border:none;color:var(--muted);font:inherit;font-size:.6rem;letter-spacing:.26em;
     text-transform:uppercase;cursor:pointer;padding:.35rem 1.2rem;opacity:.75;transition:.2s}
-  #dDetails:hover{color:var(--aqua);opacity:1}
+  #dDetails:hover{color:var(--accent);opacity:1}
   #drawer{display:flex;flex-direction:column;gap:1rem;align-items:center;width:100%;
     max-height:1000px;overflow:hidden;transition:max-height .5s ease,opacity .4s ease}
   #drawer.closed{max-height:0;opacity:0;pointer-events:none}
@@ -107,7 +119,7 @@
   .tile{border:1px solid var(--line);border-radius:14px;background:var(--glass);padding:.7rem .85rem;
     display:flex;flex-direction:column;gap:.12rem;transition:opacity .4s}
   .tile .tv{font-size:1.18rem;font-weight:300;color:var(--ink)}
-  .tile .tv b{font-weight:300;color:var(--aqua)}
+  .tile .tv b{font-weight:300;color:var(--accent)}
   .tile .tl{font-size:.58rem;letter-spacing:.18em;color:var(--muted);text-transform:uppercase}
   .tile .ts{font-size:.62rem;color:var(--muted);opacity:.8;min-height:.9em}
   #lab.quiet .tile,#lab.quiet #hero{opacity:.4}
@@ -122,8 +134,8 @@
   #dock.hide{opacity:0;pointer-events:none}
   .ic{width:40px;height:40px;border-radius:11px;border:1px solid transparent;background:transparent;color:var(--ink);
     cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.15s;flex:none}
-  .ic:hover{background:rgba(79,216,196,.1);border-color:var(--line)}
-  .ic.active{color:var(--aqua);border-color:var(--aqua-deep);background:rgba(79,216,196,.08)}
+  .ic:hover{background:rgba(var(--accent-rgb),.1);border-color:var(--line)}
+  .ic.active{color:var(--accent);border-color:var(--accent-deep);background:rgba(var(--accent-rgb),.08)}
   .ic svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
   .sep{width:1px;height:26px;background:var(--line);flex:none}
   #droneNote{display:flex;flex-direction:column;align-items:center;line-height:1.2;
@@ -136,10 +148,10 @@
   #dOctLbl{font-size:.56rem;letter-spacing:.12em;color:var(--muted);text-transform:uppercase;
     min-width:4.6ch;text-align:center}
   .nbtn{width:26px;height:32px;font-size:1rem;color:var(--muted);background:none;border:none;cursor:pointer}
-  .nbtn:hover{color:var(--aqua)}
+  .nbtn:hover{color:var(--accent)}
   #dTune{font-size:.6rem;letter-spacing:.08em;color:var(--muted);background:none;border:1px solid var(--line);
     border-radius:8px;padding:.34rem .5rem;cursor:pointer;transition:.15s;flex:none}
-  #dTune:hover{color:var(--aqua)}
+  #dTune:hover{color:var(--accent)}
   @media (max-width:540px){
     #dock{gap:6px;padding:8px 10px}
     .ic{width:36px;height:36px}
@@ -193,11 +205,11 @@
     #dTune{font-size:.78rem;padding:.5rem .7rem;border-radius:10px}
     #dEnd{font-size:.84rem;padding:.72rem 1.1rem;border-radius:12px}
     /* home veil at desktop scale */
-    #veil{gap:2rem}
-    #veil h1{font-size:3rem}
-    #veil p{font-size:1.08rem;max-width:46ch}
-    #veil .priv{font-size:.85rem;max-width:52ch}
-    button.b{font-size:1rem;padding:1rem 2.4rem}
+    #veil{gap:2.4rem}
+    #veil h1{font-size:4.2rem;letter-spacing:.46em;padding-left:.46em}
+    #veil p{font-size:1.35rem;max-width:430px;letter-spacing:.18em;text-wrap:balance}
+    #veil .priv{font-size:.72rem;max-width:46ch}
+    button.b{font-size:1.15rem;padding:1rem 2.8rem;letter-spacing:.24em}
   }
 
   /* ---------- summary ---------- */
@@ -206,7 +218,7 @@
   #summary.hide{opacity:0;pointer-events:none}
   #sCard{width:min(680px,92vw);max-height:86vh;overflow-y:auto;background:#071010;border:1px solid var(--line);
     border-radius:20px;padding:1.6rem 1.7rem;display:flex;flex-direction:column;gap:1rem}
-  #sCard h2{font-weight:300;font-size:1rem;letter-spacing:.3em;text-transform:uppercase;color:var(--aqua-pale)}
+  #sCard h2{font-weight:300;font-size:1rem;letter-spacing:.3em;text-transform:uppercase;color:var(--accent-pale)}
   .sGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:.6rem}
   .sStat{border:1px solid var(--line);border-radius:12px;padding:.6rem .8rem}
   .sStat .tv{font-size:1.25rem;font-weight:300}
@@ -216,8 +228,8 @@
   th{font-weight:400;font-size:.58rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);
     text-align:right;padding:.3rem .45rem;border-bottom:1px solid var(--line)}
   th:first-child,td:first-child{text-align:left}
-  td{padding:.34rem .45rem;text-align:right;color:var(--ink);border-bottom:1px solid rgba(79,216,196,.06)}
-  td b{color:var(--aqua);font-weight:400}
+  td{padding:.34rem .45rem;text-align:right;color:var(--ink);border-bottom:1px solid rgba(var(--accent-rgb),.06)}
+  td b{color:var(--accent);font-weight:400}
   #trendWrap{display:flex;flex-direction:column;gap:.3rem}
   #trendWrap label{font-size:.58rem;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
   #trend{width:100%;height:56px}
@@ -234,20 +246,20 @@
     display:flex;flex-direction:column;gap:1rem;align-items:center;text-align:center}
   #jiClose{position:absolute;top:10px;right:14px;background:none;border:none;color:var(--muted);
     font-size:1.25rem;cursor:pointer;line-height:1}
-  #jiClose:hover{color:var(--aqua)}
-  #jiCard h2{font-weight:300;font-size:1.05rem;letter-spacing:.3em;text-transform:uppercase;color:var(--aqua-pale)}
+  #jiClose:hover{color:var(--accent)}
+  #jiCard h2{font-family:var(--font-display);font-weight:400;font-size:1.05rem;letter-spacing:.3em;text-transform:uppercase;color:var(--accent-pale)}
   #jiCard>p{color:var(--muted);font-size:.8rem;line-height:1.7;max-width:38ch}
   #jiRows{display:flex;flex-direction:column;gap:.45rem;width:100%}
   .jrow{display:flex;align-items:center;gap:.9rem;width:100%;padding:.5rem .8rem;
-    appearance:none;background:rgba(79,216,196,.03);border:1px solid var(--line);border-radius:14px;
+    appearance:none;background:rgba(var(--accent-rgb),.03);border:1px solid var(--line);border-radius:14px;
     cursor:pointer;font:inherit;color:var(--ink);text-align:left;transition:border-color .15s,background .15s;
     -webkit-tap-highlight-color:transparent;
     opacity:0;transform:translateY(8px);animation:jiIn .5s ease forwards}
-  .jrow:hover{border-color:currentColor;background:rgba(79,216,196,.07)}
+  .jrow:hover{border-color:currentColor;background:rgba(var(--accent-rgb),.07)}
   .jrow .jdot{width:34px;height:34px;border-radius:50%;flex:none;display:flex;align-items:center;
     justify-content:center;background:currentColor;box-shadow:0 0 12px 1px currentColor}
   .jrow .jdot span{color:rgba(4,7,10,.92);font-size:.85rem;font-weight:600}
-  .jrow .jsk{font-size:.92rem;font-weight:400;letter-spacing:.04em;flex:1}
+  .jrow .jsk{font-family:var(--font-display);font-size:.92rem;font-weight:400;letter-spacing:.04em;flex:1}
   .jrow .jen{font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
   @keyframes jiIn{to{opacity:1;transform:none}}
   @media (prefers-reduced-motion:reduce){ .jrow{animation:none;opacity:1;transform:none} }
@@ -262,27 +274,27 @@
     display:flex;flex-direction:column;gap:.85rem;text-align:center;align-items:center}
   #qClose{position:absolute;top:10px;right:14px;background:none;border:none;color:var(--muted);
     font-size:1.25rem;cursor:pointer;line-height:1}
-  #qClose:hover{color:var(--aqua)}
+  #qClose:hover{color:var(--accent)}
   #qDots{display:flex;gap:6px}
-  #qDots i{width:6px;height:6px;border-radius:50%;background:rgba(79,216,196,.2);transition:background .3s}
-  #qDots i.on{background:var(--aqua)}
-  #qTitle{font-weight:300;font-size:.95rem;letter-spacing:.24em;text-transform:uppercase;color:var(--aqua-pale)}
+  #qDots i{width:6px;height:6px;border-radius:50%;background:rgba(var(--accent-rgb),.2);transition:background .3s}
+  #qDots i.on{background:var(--accent)}
+  #qTitle{font-family:var(--font-display);font-weight:400;font-size:.95rem;letter-spacing:.24em;text-transform:uppercase;color:var(--accent-pale)}
   #qText{color:var(--muted);font-size:.82rem;line-height:1.8;max-width:40ch;min-height:4.4em}
-  #qNote{font-weight:200;font-size:3.2rem;color:var(--aqua-pale);line-height:1;min-height:1em}
+  #qNote{font-weight:200;font-size:3.2rem;color:var(--accent-pale);line-height:1;min-height:1em}
   #qNote small{font-size:45%;color:var(--muted)}
   #qSub{color:var(--muted);font-size:.72rem;letter-spacing:.1em;min-height:1.1em}
   .qchips{display:flex;gap:.5rem;flex-wrap:wrap;justify-content:center}
-  .qchip{appearance:none;-webkit-appearance:none;background:rgba(79,216,196,.04);
+  .qchip{appearance:none;-webkit-appearance:none;background:rgba(var(--accent-rgb),.04);
     border:1px solid var(--line);border-radius:999px;padding:.4rem .85rem;font-size:.74rem;color:var(--ink)}
-  button.qchip:hover{background:rgba(79,216,196,.1)}
-  .qchip b{color:var(--aqua);font-weight:400}
-  .qchip.best{border-color:var(--aqua-deep);background:rgba(79,216,196,.08)}
+  button.qchip:hover{background:rgba(var(--accent-rgb),.1)}
+  .qchip b{color:var(--accent);font-weight:400}
+  .qchip.best{border-color:var(--accent-deep);background:rgba(var(--accent-rgb),.08)}
   /* single-session score: a mini eclipse in the centre's colour */
   .qEclipse{width:130px;height:130px;border-radius:50%;background:#000;flex:none;
     border:2px solid currentColor;display:flex;align-items:center;justify-content:center;
     box-shadow:0 0 18px 4px currentColor, 0 0 48px 16px color-mix(in srgb, currentColor 40%, transparent);
     margin:.4rem auto}
-  .qEclipse span{font-weight:200;font-size:2.4rem;color:currentColor;letter-spacing:.02em}
+  .qEclipse span{font-family:var(--font-display);font-weight:300;font-size:2.4rem;color:currentColor;letter-spacing:.02em}
   /* journey scorecard: seven mini eclipses, softened coronas so they don't bloom together */
   .qEclipseWrap{display:flex;flex-direction:column;align-items:center;gap:.45rem;flex:none}
   .qEclipse.mini{width:62px;height:62px;margin:0;
@@ -297,14 +309,14 @@
   #qCard.single #qChips{flex:1;display:flex;align-items:center;justify-content:center;width:100%}
   #qCard.single #qSkip{display:none}                       /* no ghost flex space */
   #qCard.single #qBtns{justify-content:center;width:100%}
-  #qBar{width:70%;height:3px;background:rgba(79,216,196,.14);border-radius:2px;overflow:hidden}
+  #qBar{width:70%;height:3px;background:rgba(var(--accent-rgb),.14);border-radius:2px;overflow:hidden}
 
   /* ---------- chakra journey banner ---------- */
   #jBanner{display:flex;align-items:center;gap:.7rem;padding:.55rem 1rem;border:1px solid var(--line);
     border-radius:999px;background:var(--glass);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
     max-width:94vw;margin-top:.2rem}
   #jBanner.hide{display:none}
-  #jDot{width:12px;height:12px;border-radius:50%;background:var(--aqua);flex:none;
+  #jDot{width:12px;height:12px;border-radius:50%;background:var(--accent);flex:none;
     box-shadow:0 0 12px 1px currentColor;transition:background .8s}
   #jInfo{display:flex;flex-direction:column;line-height:1.3;min-width:0}
   #jName{font-size:.78rem;color:var(--ink);font-weight:400;letter-spacing:.05em;white-space:nowrap;
@@ -315,17 +327,18 @@
     border:1px solid var(--line);transition:background .4s,border-color .4s}
   #jEnd{background:none;border:none;color:var(--muted);font-size:.95rem;cursor:pointer;
     padding:.2rem .3rem;flex:none;line-height:1}
-  #jEnd:hover{color:var(--aqua)}
+  #jEnd:hover{color:var(--accent)}
   /* journey dock: three controls, nothing else — play/pause, octave, next */
   #jDock{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);display:flex;align-items:center;gap:10px;
     padding:10px 14px;background:var(--glass);border:1px solid var(--line);border-radius:16px;
     backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);z-index:20;transition:opacity .4s ease}
   #jDock.hide{opacity:0;pointer-events:none}
   .jbtn{appearance:none;background:transparent;border:1px solid var(--line);border-radius:12px;color:var(--ink);
-    font:inherit;font-size:.8rem;letter-spacing:.14em;font-weight:500;padding:.8rem 1.2rem;cursor:pointer;
+    font-family:var(--font-display);font-size:.95rem;letter-spacing:.18em;font-weight:400;
+    padding:.8rem 1.2rem;cursor:pointer;
     display:flex;align-items:center;justify-content:center;transition:.15s;min-width:72px;
     -webkit-tap-highlight-color:transparent}
-  .jbtn:hover{color:var(--aqua);border-color:var(--aqua-deep);background:rgba(79,216,196,.06)}
+  .jbtn:hover{color:var(--accent);border-color:var(--accent-deep);background:rgba(var(--accent-rgb),.06)}
   .jbtn svg{width:20px;height:20px;fill:currentColor;stroke:none}
   /* desktop overrides for the intro, quiz/scorecard and journey banner/dock.
      This block MUST stay after all their base sections to win the cascade
@@ -364,7 +377,7 @@
     #qCard.single #qTitle{font-size:1.6rem}
     #qCard.single #qText{font-size:1.02rem}
   }
-  #qBar i{display:block;height:100%;width:0;background:var(--aqua)}
+  #qBar i{display:block;height:100%;width:0;background:var(--accent)}
   #qBtns{display:flex;gap:.7rem;margin-top:.15rem}
 </style>
 </head>
@@ -376,8 +389,7 @@
 
 <div id="veil">
   <h1>Vox</h1>
-  <p>A vocal toning companion. Hum or sing along to the sacred frequencies
-     and feel your Chakras awaken. We welcome you and honor you, Namaste.</p>
+  <p>Discover the calming practice of vocal toning.</p>
   <div class="cta" style="display:flex;gap:.7rem;flex-wrap:wrap;justify-content:center">
     <button class="b solid" id="vJourney">Chakra Journey</button>
   </div>
@@ -675,7 +687,7 @@ const dispName=m=>{const pc=pcOf(m);return CHAKRAS[pc][1]?CHAKRAS[pc][1]+' '+NOT
 const noteDisp=s=>{const L=String(s).replace(/-?\d+$/,'');const pc=NOTES.indexOf(L);
   return pc>=0&&CHAKRAS[pc][1]?CHAKRAS[pc][1]+' '+L:L;};
 function noteRGB(midiC){
-  if(midiC==null) return [79,216,196];
+  if(midiC==null) return [203,168,92];
   const h=CHAKRAS[pcOf(midiC)][0];
   return [parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];
 }
@@ -685,10 +697,10 @@ const DPR=Math.min(2,window.devicePixelRatio||1);
 const chart={coh:[],f0:[],cap:450};      // ~45s at 10Hz
 let lastPush=0;
 
-function scoreColor(v){
-  if(v<40) return '#8a7cc9';
-  if(v<70) return '#e0b64f';
-  return '#4fd8c4';
+function scoreColor(v){          // warm ramp: dim -> bronze -> gold
+  if(v<40) return '#7a6a58';
+  if(v<70) return '#a8894e';
+  return '#cba85c';
 }
 // single-chakra colour lock: the journey's chakra, else the drone target,
 // else the chakra note nearest the voice — one chakra at a time, no blending
@@ -742,7 +754,7 @@ function drawStrip(){
     const y=h-(chart.coh[i]/100)*(h-8)-4;
     started?sctx.lineTo(i*dx,y):(sctx.moveTo(i*dx,y),started=true);
   }
-  sctx.strokeStyle='rgba(79,216,196,.9)'; sctx.lineWidth=1.5*DPR; sctx.stroke();
+  sctx.strokeStyle='rgba(var(--accent-rgb),.9)'; sctx.lineWidth=1.5*DPR; sctx.stroke();
 }
 
 let lastDraw=0, rafLive=true, domT=0;
@@ -848,7 +860,7 @@ function drawTrend(hist,current){
   const n=pts.length, dx=n>1?w/(n-1):0;
   x.beginPath();
   pts.forEach((v,i)=>{ const y=h-(v/100)*(h-10*DPR)-5*DPR; i?x.lineTo(i*dx,y):x.moveTo(0,y); });
-  if(n>1){ x.strokeStyle='rgba(79,216,196,.8)'; x.lineWidth=1.5*DPR; x.stroke(); }
+  if(n>1){ x.strokeStyle='rgba(var(--accent-rgb),.8)'; x.lineWidth=1.5*DPR; x.stroke(); }
   pts.forEach((v,i)=>{
     const y=h-(v/100)*(h-10*DPR)-5*DPR;
     x.fillStyle=(i===n-1&&current!=null)?'#ffe9a8':scoreColor(v);
@@ -1175,7 +1187,7 @@ function jrComplete(early){
     qn.style.visibility=''; qn.textContent='GO AGAIN';
     qn.style.background=CHAKRAS[spc][0];    // the chip wears the centre's colour
     qn.style.borderColor=CHAKRAS[spc][0];
-    qn.style.color='#04211c';
+    qn.style.color='#141009';
   }
 }
 function jrAbort(){

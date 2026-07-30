@@ -9,7 +9,7 @@
 <meta property="og:description" content="Discover the calming practice of vocal toning.">
 <meta name="theme-color" content="#04070a">
 <title>Vox — Vocal Toning</title>
-<meta name="vox-version" content="0.12.0">
+<meta name="vox-version" content="0.12.1">
 <style>
   /* Cormorant Garamond — SIL OFL, self-hosted so nothing is fetched off-origin
      (see fonts/OFL.txt) */
@@ -324,6 +324,9 @@
   #qCard.single #qChips{flex:1;display:flex;align-items:center;justify-content:center;width:100%}
   #qCard.single #qSkip{display:none}                       /* no ghost flex space */
   #qCard.single #qBtns{justify-content:center;width:100%}
+  /* what the number means, at the moment the user first wonders */
+  #qCohCap{font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);
+    opacity:.85;line-height:1.9;max-width:36ch;text-align:center}
   #qBar{width:70%;height:3px;background:rgba(var(--accent-rgb),.14);border-radius:2px;overflow:hidden}
 
   /* ---------- chakra journey banner ---------- */
@@ -391,6 +394,7 @@
     #qChips.orbGrid{max-width:440px;gap:1.1rem .9rem}   /* rows of 4+3, not 5+2 */
     #qCard.single #qTitle{font-size:1.6rem}
     #qCard.single #qText{font-size:1.02rem}
+    #qCohCap{font-size:.7rem}
   }
   #qBar i{display:block;height:100%;width:0;background:var(--accent)}
   #qBtns{display:flex;gap:.7rem;margin-top:.15rem}
@@ -518,6 +522,7 @@
     <div id="qNote">—</div>
     <div id="qSub"></div>
     <div class="qchips" id="qChips" hidden></div>
+    <div id="qCohCap" hidden></div>
     <div id="qBar"><i id="qFill"></i></div>
     <div id="qBtns">
       <button class="b" id="qSkip">Skip</button>
@@ -1231,6 +1236,9 @@ function jrComplete(early){
     d.innerHTML='<span>'+(s&&s.coh>0?Math.round(s.coh):'—')+'</span>';
     ch.appendChild(d);
   }
+  const cap=$('qCohCap');
+  cap.hidden=false;
+  cap.textContent='coherence — how steady and clear '+(jr.mode==='full'?'each tone was':'your tone was')+' · calm beats loud';
   $('qSkip').style.visibility='hidden';
   const qn=$('qNext');
   if(jr.mode==='full'){

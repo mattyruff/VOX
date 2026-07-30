@@ -9,7 +9,7 @@
 <meta property="og:description" content="Discover the calming practice of vocal toning.">
 <meta name="theme-color" content="#04070a">
 <title>Vox — Vocal Toning</title>
-<meta name="vox-version" content="0.12.2">
+<meta name="vox-version" content="0.12.3">
 <style>
   /* Cormorant Garamond — SIL OFL, self-hosted so nothing is fetched off-origin
      (see fonts/OFL.txt) */
@@ -568,6 +568,16 @@
 const TAU=Math.PI*2;
 const clamp=(v,a,b)=>v<a?a:(v>b?b:v);
 const MOBILE=matchMedia('(pointer:coarse)').matches||(navigator.maxTouchPoints>0&&Math.min(screen.width||1024,screen.height||768)<=820);
+
+// dev switch: loading with ?fresh wipes all saved state, so every visit to
+// /?fresh is a brand-new first-time user (first-run hints included). Keep the
+// param in the URL and each reload resets again; remove it to be a returner.
+try{
+  if(new URLSearchParams(location.search).has('fresh')){
+    Object.keys(localStorage).filter(k=>k.indexOf('vox')===0)
+      .forEach(k=>localStorage.removeItem(k));
+  }
+}catch(e){}
 
 // The listening engine lives in vox-engine.js (Vox.Engine, no DOM). This page
 // owns the UI, the shruti drone, the tone test and the chakra journey.

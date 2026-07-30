@@ -9,7 +9,7 @@
 <meta property="og:description" content="Discover the calming practice of vocal toning.">
 <meta name="theme-color" content="#04070a">
 <title>Vox — Vocal Toning</title>
-<meta name="vox-version" content="0.11.2">
+<meta name="vox-version" content="0.12.0">
 <style>
   /* Cormorant Garamond — SIL OFL, self-hosted so nothing is fetched off-origin
      (see fonts/OFL.txt) */
@@ -234,6 +234,22 @@
   #trend{width:100%;height:56px}
   #sBtns{display:flex;gap:.7rem;justify-content:flex-end;flex-wrap:wrap}
   #sNoTones{color:var(--muted);font-size:.78rem;line-height:1.7}
+
+  /* ---------- mic-denied help: an in-app path back, never a dead end ---------- */
+  #micHelp{position:fixed;inset:0;z-index:70;display:flex;align-items:center;justify-content:center;
+    background:rgba(2,5,6,.88);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+    transition:opacity .4s}
+  #micHelp.hide{opacity:0;pointer-events:none}
+  #mhCard{position:relative;width:min(420px,92vw);background:#071010;
+    border:1px solid var(--line);border-radius:20px;padding:1.8rem 1.5rem 1.5rem;
+    display:flex;flex-direction:column;gap:1rem;align-items:center;text-align:center}
+  #mhClose{position:absolute;top:10px;right:14px;background:none;border:none;color:var(--muted);
+    font-size:1.25rem;cursor:pointer;line-height:1}
+  #mhClose:hover{color:var(--accent)}
+  #mhCard h2{font-family:var(--font-display);font-weight:400;font-size:1.15rem;letter-spacing:.24em;
+    text-transform:uppercase;color:var(--accent-pale)}
+  #mhCard p{color:var(--muted);font-size:.84rem;line-height:1.75;max-width:36ch}
+  #mhRetry{min-width:60%;justify-content:center}
 
   /* ---------- chakra journey intro: the seven centres ---------- */
   #jIntro{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;
@@ -472,11 +488,22 @@
   <button class="jbtn" id="jNext">NEXT</button>
 </div>
 
+<div id="micHelp" class="hide">
+  <div id="mhCard">
+    <button id="mhClose" aria-label="Close">×</button>
+    <h2>Vox needs to hear you</h2>
+    <p>Your browser blocked the microphone. Tap the mic or lock icon in the
+       address bar, choose Allow, then try again. Your voice is never recorded.</p>
+    <button class="jbtn" id="mhRetry">TRY AGAIN</button>
+  </div>
+</div>
+
 <div id="jIntro" class="hide">
   <div id="jiCard">
     <button id="jiClose" aria-label="Close">×</button>
     <h2>The Seven Chakras</h2>
-    <p>Welcome, click begin journey or select single chakra if you like.</p>
+    <p>Hum a steady tone for five seconds — a dot lights for each one.
+       Tap a chakra to focus on it, or walk all seven.</p>
     <div id="jiRows"></div>
     <button class="jbtn" id="jiBegin">BEGIN JOURNEY</button>
   </div>
@@ -567,7 +594,7 @@ async function useMic(){
   micPending=true;
   const ok=await engine.start();
   micPending=false;
-  if(!ok){ alert('Mic unavailable — check browser permissions.'); return; }
+  if(!ok){ $('micHelp').classList.remove('hide'); return; }   // in-app path back, not an alert
   actx=engine.audioContext; SR=engine.sampleRate;
   claimAudio();
   reveal(); syncUI();
@@ -1055,7 +1082,7 @@ const CHAKRA_SEQ=[
 // phase: 'ready' (drone off, waiting for play) | 'run' (droning, counting hums)
 // | 'done' (final tone credited; doneStep 'toning' -> 'still' winds the centre down).
 const jr={active:false,mode:'',idx:0,phase:'ready',hums:0,humDone:false,doneStep:'',doneT:0,
-  peaks:[],tonePeak:0,scores:[],ui:''};
+  peaks:[],tonePeak:0,lastVoiceT:0,scores:[],ui:''};
 const jrTarget=()=>jr.mode==='full'?3:5;   // tones per centre: 3 on the walk, 5 dwelling
 let ovlMode='quiz';
 
@@ -1083,14 +1110,18 @@ function jrEntry(){
     const b=document.createElement('button');
     b.className='jrow'; b.style.color=CHAKRAS[pc][0];
     b.style.animationDelay=(k*70)+'ms';
+    // English name leads — it's what most first-time users recognise;
+    // the Sanskrit stays as the quiet second line (test-round hierarchy)
     b.innerHTML='<span class="jdot"><span>'+NOTES[pc]+'</span></span>'+
-      '<span class="jsk">'+sk+'</span><span class="jen">'+en+' Chakra</span>';
+      '<span class="jsk">'+en+'</span><span class="jen">'+sk+'</span>';
     b.onclick=()=>jrBegin('single',i);
     wrap.appendChild(b);
   });
   $('jIntro').classList.remove('hide');
 }
+let jrLastAttempt=null;                 // what TRY AGAIN should retry after a mic denial
 async function jrBegin(mode,idx){
+  jrLastAttempt=[mode,idx];
   $('jIntro').classList.add('hide');
   if(!engine.running) await useMic();
   if(!engine.running) return;
@@ -1112,7 +1143,7 @@ function jrEnter(){
   setDroneMidi(chakraOct+pc);
   if(droneOn) droneSet(false);
   $('jDot').style.background=CHAKRAS[pc][0]; $('jDot').style.color=CHAKRAS[pc][0];
-  $('jName').textContent=sk+' — '+en+' · '+NOTES[pc];
+  $('jName').textContent=en+' — '+sk+' · '+NOTES[pc];
   $('jHums').innerHTML='<i></i>'.repeat(jrTarget());
   jrHumDots(); jrPlayUI(); jrSub('press play to begin');
 }
@@ -1140,6 +1171,7 @@ function jrPlayToggle(){
     jr.tonePeak=0; jr.humDone=false;      // a tone interrupted by pause starts over
   } else {
     jr.phase='run';
+    jr.lastVoiceT=performance.now();       // arms the still-listening fallback
     setDroneMidi(chakraOct+CHAKRA_SEQ[jr.idx][0]); droneSet(true);
     jrSub('hum & hold with the drone');
   }
@@ -1167,17 +1199,17 @@ function jrComplete(early){
   const scored=jr.scores.filter(s=>s.coh>0);
   const best=scored.slice().sort((a,b)=>b.coh-a.coh)[0];
   const [spc,sen,ssk]=CHAKRA_SEQ[jr.idx];
-  $('qTitle').textContent=jr.mode==='full'?(early?'Journey ended':'Journey complete'):(ssk+' — '+sen);
+  $('qTitle').textContent=jr.mode==='full'?(early?'Journey ended':'Journey complete'):(sen+' — '+ssk);
   $('qTitle').style.color=jr.mode==='full'?'':CHAKRAS[spc][0];   // title wears the centre's colour
   $('qCard').classList.toggle('single',jr.mode!=='full');        // singles stretch to fill
   $('qText').textContent=
     jr.mode==='full'
       ? (!early
-        ? 'Congratulations, you have taken time to honor your SELF. Your bravery is commendable and worth noting. By connecting with your voice you have opened a door to your inner Universe. May your day be filled with magic and synchronicity. Below you will find your "coherence" values for each Chakra. Remember these numbers are not here to judge your efforts. They are merely a tool for your own awareness and reference.'
+        ? 'You honored all seven chakras. These numbers are awareness, not judgment.'
         : (best
           ? 'Your voice glowed brightest at the '+CHAKRA_SEQ[best.i][1]+' ('+CHAKRA_SEQ[best.i][2]+'), coherence '+Math.round(best.coh)+'.'
           : 'A quiet one — Vox barely heard your voice this time.'))
-      : 'Your attention to your '+sen+' Chakra will not go unnoticed, take a moment to hold onto this awareness. Below is your "coherence" value for this session. Remember this is a tool for reference not judgement, there is no perfection only progress.';
+      : 'Your '+sen+' chakra heard you.';
   $('qNote').textContent=''; $('qSub').textContent=''; $('qFill').style.width='0';
   const ch=$('qChips'); ch.hidden=false; ch.innerHTML=''; ch.style.flexDirection='';
   ch.classList.toggle('orbGrid',jr.mode==='full');
@@ -1223,16 +1255,19 @@ function jrTick(){
   if(jr.phase==='done'){ jrDoneTick(); return; }  // centre complete: gentle wind-down
   if(jr.phase!=='run') return;                    // paused / waiting: nothing counts
   const HUM=window.__jrFast?1.5:5;                // seconds a tone must hold
-  if(eng.voiced) jrPeak();
+  if(eng.voiced){ jrPeak(); jr.lastVoiceT=performance.now(); }
   if(eng.voiced&&!jr.humDone&&eng.breath>=HUM){
     jr.humDone=true; jr.hums++;                   // one credit per continuous tone
     jrHumDots();
     if(jr.hums>=jrTarget()){                      // final tone: drone stays with the voice
       jr.phase='done'; jr.doneStep='toning'; jr.doneT=performance.now();
-      jrSub('beautiful — let it fade');
+      jrSub("that's all "+(jrTarget()===3?'three':'five')+' — let it fade');
       return;
     }
-    jrSub('release, breathe, and sound again');
+    // the very first dot anyone ever earns explains itself, once
+    let firstEver=false;
+    if(jr.hums===1){ try{ if(!localStorage.getItem('voxFirstTone')){ firstEver=true; localStorage.setItem('voxFirstTone','1'); } }catch(e){} }
+    jrSub(firstEver?"that's one — each dot is a held tone":'release, breathe, and sound again');
   }
   if(!eng.voiced&&jr.humDone){                    // the tone ended: bank its best moment
     jrBankPeak();
@@ -1279,7 +1314,10 @@ function jrProgress(){
   const now=performance.now(); if(now-jrUiT<250) return; jrUiT=now;
   const HUM=window.__jrFast?1.5:5;
   if(eng.voiced&&!jr.humDone) jrSub('hold — '+Math.max(0,Math.ceil(HUM-eng.breath))+'s');
-  else if(!eng.voiced&&!jr.humDone) jrSub('hum & hold with the drone');
+  else if(!eng.voiced&&!jr.humDone){
+    // 12s of play with no voice: a mic problem must not look like hesitation
+    jrSub(now-jr.lastVoiceT>12000?'still listening — try humming a little louder':'hum & hold with the drone');
+  }
 }
 
 /* ---------- wiring ---------- */
@@ -1339,6 +1377,11 @@ $('jPlay').onclick=jrPlayToggle;
 $('jNext').onclick=()=>{ if(jr.active) jrNext(); };   // also shortcuts the wind-down
 $('jiBegin').onclick=()=>jrBegin('full',0);
 $('jiClose').onclick=()=>$('jIntro').classList.add('hide');
+$('mhClose').onclick=()=>$('micHelp').classList.add('hide');
+$('mhRetry').onclick=()=>{
+  $('micHelp').classList.add('hide');
+  if(jrLastAttempt) jrBegin(jrLastAttempt[0],jrLastAttempt[1]);
+};
 $('jEnd').onclick=()=>{
   if(!jr.active) return;
   if(jr.tonePeak>0) jrBankPeak();   // credit a tone still sounding when they exit

@@ -141,12 +141,17 @@ class VoxEngine {
   // ---------- mic lifecycle ----------
   async start(){
     if(this.mode === 'mic') return true;
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return false;
+    // create + start resuming the context while the click gesture is still live —
+    // resuming only AFTER the permission prompt can hang forever on iOS Safari,
+    // because the prompt consumes the user activation the resume needs
+    this.ensureContext();
+    const resuming = this.ctx.resume().catch(()=>{});
     let stream;
     try{
       stream = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
     }catch(e){ return false; }
-    this.ensureContext();
-    await this.ctx.resume();
+    await resuming;
     this.micStream = stream;
     this.mode = 'mic';
     this.srcNode = this.ctx.createMediaStreamSource(stream);

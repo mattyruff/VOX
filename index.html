@@ -9,7 +9,7 @@
 <meta property="og:description" content="Discover the calming practice of vocal toning.">
 <meta name="theme-color" content="#04070a">
 <title>Vox — Vocal Toning</title>
-<meta name="vox-version" content="0.12.4">
+<meta name="vox-version" content="0.12.5">
 <style>
   /* Cormorant Garamond — SIL OFL, self-hosted so nothing is fetched off-origin
      (see fonts/OFL.txt) */
@@ -561,7 +561,7 @@
   </div>
 </div>
 
-<script src="vox-engine.js?v=0.12.4"></script>
+<script src="vox-engine.js?v=0.12.5"></script>
 <script>
 (()=>{
 "use strict";
@@ -608,19 +608,34 @@ function ensureCtx(){ engine.ensureContext(); actx=engine.audioContext; SR=engin
 // In-app browsers (Messages, Instagram, Facebook, …) block the microphone with no
 // permission UI at all — telling those users to "tap the mic icon in the address
 // bar" is impossible advice. Detect them and steer to a real browser instead.
-function inAppBrowser(){
+function micApiMissing(){
   const md=navigator.mediaDevices;
-  if(!md||!md.getUserMedia) return true;
+  return !md||!md.getUserMedia;                  // webviews, file://, lockdown modes
+}
+function inAppBrowser(){
+  if(micApiMissing()) return true;
   return /Instagram|FBAN|FBAV|FB_IAB|Messenger|Snapchat|TikTok|musical_ly|Line\/|Twitter/i
     .test(navigator.userAgent||'');
 }
-function showMicHelp(){
-  const iab=inAppBrowser();
-  $('mhTitle').textContent=iab?'Open Vox in your browser':'Vox needs to hear you';
-  $('mhBody').textContent=iab
-    ?"This in-app browser can't use the microphone. Tap the ⋯ menu and choose 'Open in Browser' — or copy the link and paste it into Safari or Chrome."
-    :'Your browser blocked the microphone. Tap the mic or lock icon in the address bar, choose Allow, then try again. Your voice is never recorded.';
-  $('mhRetry').textContent=iab?'COPY LINK':'TRY AGAIN';
+let micHelpKind='denied';
+function showMicHelp(kind){
+  // kind: 'inapp' (no mic API / social webview) | 'denied' | 'stuck' (call never returned)
+  micHelpKind=kind||'denied';
+  const t=$('mhTitle'), b=$('mhBody'), r=$('mhRetry');
+  if(!t||!b||!r) return;                         // never let the helper itself fail silently
+  if(kind==='inapp'){
+    t.textContent='Open Vox in your browser';
+    b.textContent="This browser can't use the microphone. Tap the ⋯ menu and choose 'Open in Browser' — or copy the link and paste it into Safari or Chrome.";
+    r.textContent='COPY LINK';
+  }else if(kind==='stuck'){
+    t.textContent='The microphone is not responding';
+    b.textContent='Your browser did not answer the microphone request. Close other apps or tabs using the mic, then try again.';
+    r.textContent='TRY AGAIN';
+  }else{
+    t.textContent='Vox needs to hear you';
+    b.textContent='Your browser blocked the microphone. Tap the mic or lock icon in the address bar, choose Allow, then try again. Your voice is never recorded.';
+    r.textContent='TRY AGAIN';
+  }
   $('micHelp').classList.remove('hide');
 }
 let micPending=false;
@@ -628,9 +643,15 @@ async function useMic(){
   if(micPending) return;
   if(engine.running){ stopMic(); return; }
   micPending=true;
-  const ok=await engine.start();
+  // some browsers (notably iOS Safari after repeated stop/starts) can leave the
+  // permission call hanging forever — never strand the user on a blank screen
+  const ok=await Promise.race([
+    engine.start(),
+    new Promise(res=>setTimeout(()=>res('stuck'),8000))
+  ]);
   micPending=false;
-  if(!ok){ showMicHelp(); return; }              // in-app path back, not an alert
+  if(ok==='stuck'){ showMicHelp('stuck'); return; }
+  if(!ok){ showMicHelp(inAppBrowser()?'inapp':'denied'); return; }
   actx=engine.audioContext; SR=engine.sampleRate;
   claimAudio();
   reveal(); syncUI();
@@ -1157,12 +1178,17 @@ function jrEntry(){
 }
 let jrLastAttempt=null;                 // what TRY AGAIN should retry after a mic denial
 async function jrBegin(mode,idx){
-  jrLastAttempt=[mode,idx];
-  $('jIntro').classList.add('hide');
-  if(!engine.running && inAppBrowser()){ showMicHelp(); return; }   // don't even attempt
-  if(!engine.running) await useMic();
-  if(!engine.running) return;
-  journeyStart(mode,idx);
+  try{
+    jrLastAttempt=[mode,idx];
+    $('jIntro').classList.add('hide');
+    if(!engine.running && micApiMissing()){ showMicHelp('inapp'); return; }
+    if(!engine.running) await useMic();
+    if(!engine.running) return;               // useMic has already shown the help panel
+    journeyStart(mode,idx);
+  }catch(e){
+    // whatever went wrong, never strand the user on a blank home screen
+    showMicHelp('denied');
+  }
 }
 function journeyStart(mode2,idx){
   jr.active=true; jr.mode=mode2; jr.idx=mode2==='full'?0:idx; jr.scores=[];
@@ -1423,7 +1449,7 @@ $('jiBegin').onclick=()=>jrBegin('full',0);
 $('jiClose').onclick=()=>$('jIntro').classList.add('hide');
 $('mhClose').onclick=()=>$('micHelp').classList.add('hide');
 $('mhRetry').onclick=async()=>{
-  if(inAppBrowser()){
+  if(micHelpKind==='inapp'){
     // COPY LINK: hand them a clean URL to paste into a real browser
     const url=location.origin+location.pathname;
     try{

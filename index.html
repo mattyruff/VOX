@@ -9,7 +9,7 @@
 <meta property="og:description" content="Discover the calming practice of vocal toning.">
 <meta name="theme-color" content="#04070a">
 <title>Vox — Vocal Toning</title>
-<meta name="vox-version" content="0.12.3">
+<meta name="vox-version" content="0.12.4">
 <style>
   /* Cormorant Garamond — SIL OFL, self-hosted so nothing is fetched off-origin
      (see fonts/OFL.txt) */
@@ -498,8 +498,8 @@
 <div id="micHelp" class="hide">
   <div id="mhCard">
     <button id="mhClose" aria-label="Close">×</button>
-    <h2>Vox needs to hear you</h2>
-    <p>Your browser blocked the microphone. Tap the mic or lock icon in the
+    <h2 id="mhTitle">Vox needs to hear you</h2>
+    <p id="mhBody">Your browser blocked the microphone. Tap the mic or lock icon in the
        address bar, choose Allow, then try again. Your voice is never recorded.</p>
     <button class="jbtn" id="mhRetry">TRY AGAIN</button>
   </div>
@@ -561,7 +561,7 @@
   </div>
 </div>
 
-<script src="vox-engine.js"></script>
+<script src="vox-engine.js?v=0.12.4"></script>
 <script>
 (()=>{
 "use strict";
@@ -605,6 +605,24 @@ const claimAudio=()=>{ if(bc){ try{bc.postMessage('claim');}catch(e){} } };
 // couple of its handles (actx/SR) that the drone code reads directly.
 let actx=null, SR=48000;
 function ensureCtx(){ engine.ensureContext(); actx=engine.audioContext; SR=engine.sampleRate; }
+// In-app browsers (Messages, Instagram, Facebook, …) block the microphone with no
+// permission UI at all — telling those users to "tap the mic icon in the address
+// bar" is impossible advice. Detect them and steer to a real browser instead.
+function inAppBrowser(){
+  const md=navigator.mediaDevices;
+  if(!md||!md.getUserMedia) return true;
+  return /Instagram|FBAN|FBAV|FB_IAB|Messenger|Snapchat|TikTok|musical_ly|Line\/|Twitter/i
+    .test(navigator.userAgent||'');
+}
+function showMicHelp(){
+  const iab=inAppBrowser();
+  $('mhTitle').textContent=iab?'Open Vox in your browser':'Vox needs to hear you';
+  $('mhBody').textContent=iab
+    ?"This in-app browser can't use the microphone. Tap the ⋯ menu and choose 'Open in Browser' — or copy the link and paste it into Safari or Chrome."
+    :'Your browser blocked the microphone. Tap the mic or lock icon in the address bar, choose Allow, then try again. Your voice is never recorded.';
+  $('mhRetry').textContent=iab?'COPY LINK':'TRY AGAIN';
+  $('micHelp').classList.remove('hide');
+}
 let micPending=false;
 async function useMic(){
   if(micPending) return;
@@ -612,7 +630,7 @@ async function useMic(){
   micPending=true;
   const ok=await engine.start();
   micPending=false;
-  if(!ok){ $('micHelp').classList.remove('hide'); return; }   // in-app path back, not an alert
+  if(!ok){ showMicHelp(); return; }              // in-app path back, not an alert
   actx=engine.audioContext; SR=engine.sampleRate;
   claimAudio();
   reveal(); syncUI();
@@ -1141,6 +1159,7 @@ let jrLastAttempt=null;                 // what TRY AGAIN should retry after a m
 async function jrBegin(mode,idx){
   jrLastAttempt=[mode,idx];
   $('jIntro').classList.add('hide');
+  if(!engine.running && inAppBrowser()){ showMicHelp(); return; }   // don't even attempt
   if(!engine.running) await useMic();
   if(!engine.running) return;
   journeyStart(mode,idx);
@@ -1403,7 +1422,17 @@ $('jNext').onclick=()=>{ if(jr.active) jrNext(); };   // also shortcuts the wind
 $('jiBegin').onclick=()=>jrBegin('full',0);
 $('jiClose').onclick=()=>$('jIntro').classList.add('hide');
 $('mhClose').onclick=()=>$('micHelp').classList.add('hide');
-$('mhRetry').onclick=()=>{
+$('mhRetry').onclick=async()=>{
+  if(inAppBrowser()){
+    // COPY LINK: hand them a clean URL to paste into a real browser
+    const url=location.origin+location.pathname;
+    try{
+      await navigator.clipboard.writeText(url);
+      $('mhRetry').textContent='LINK COPIED';
+      setTimeout(()=>{ $('mhRetry').textContent='COPY LINK'; },2000);
+    }catch(e){ prompt('Copy this link, then open it in Safari or Chrome:',url); }
+    return;
+  }
   $('micHelp').classList.add('hide');
   if(jrLastAttempt) jrBegin(jrLastAttempt[0],jrLastAttempt[1]);
 };

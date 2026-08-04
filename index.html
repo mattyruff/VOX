@@ -9,7 +9,7 @@
 <meta property="og:description" content="Discover the calming practice of vocal toning.">
 <meta name="theme-color" content="#04070a">
 <title>Vox — Vocal Toning</title>
-<meta name="vox-version" content="0.14.0">
+<meta name="vox-version" content="0.14.1">
 <style>
   /* Cormorant Garamond — SIL OFL, self-hosted so nothing is fetched off-origin
      (see fonts/OFL.txt) */
@@ -59,21 +59,25 @@
   button.b.solid:hover{background:var(--accent-pale)}
 
   /* ---------- lab ---------- */
-  #lab{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;z-index:5;
-    padding:60px 4vw 120px;gap:1rem;overflow-y:auto;scrollbar-gutter:stable both-edges;
+  /* three regions at every size — banner/statement above, orb dead-centre,
+     details below — so the eclipse anchors the vertical middle of the screen */
+  #lab{position:fixed;inset:0;display:grid;grid-template-rows:minmax(0,1fr) auto minmax(0,1fr);
+    align-items:center;justify-items:center;z-index:5;
+    padding:60px 4vw 60px;overflow-y:auto;scrollbar-gutter:stable both-edges;
     transition:opacity .5s ease}
   #lab.hide{opacity:0;pointer-events:none}
   #labTop,#labBot{display:flex;flex-direction:column;align-items:center;gap:1rem;width:100%}
+  #labTop{align-self:end;margin-bottom:1.2rem}
+  #labBot{align-self:start;margin-top:1.2rem}
 
-  #hero{display:flex;flex-direction:column;align-items:center;gap:.2rem;margin-top:.4rem}
-  /* the affirmation leads; the chakra name supports it in small tracked caps */
-  #chakSay{font-family:var(--font-display);font-weight:400;font-size:1.8rem;letter-spacing:.06em;
-    text-align:center;line-height:1.1;min-height:1.1em;white-space:nowrap;transition:color .3s}
-  #chakName{font-family:var(--font-display);font-weight:400;font-size:.72rem;letter-spacing:.34em;
-    text-transform:uppercase;text-align:center;padding-left:.34em;   /* re-centres tracked caps */
-    color:var(--muted);white-space:nowrap;min-height:1.3em;transition:color .3s}
+  #hero{display:flex;flex-direction:column;align-items:center}
+  /* the affirmation is the whole hero: tracked caps in quotation marks */
+  #chakSay{font-family:var(--font-display);font-weight:400;font-size:1.35rem;letter-spacing:.22em;
+    text-transform:uppercase;text-align:center;padding-left:.22em;   /* re-centres tracked caps */
+    line-height:1.2;min-height:1.2em;white-space:nowrap;transition:color .3s}
   #hzTxt{font-size:.68rem;color:var(--muted);letter-spacing:.12em;opacity:.8;min-height:1em}
-  #orbWrap{position:relative;display:flex;flex-direction:column;align-items:center;gap:.35rem;margin:.1rem 0}
+  #orbWrap{position:relative;display:flex;flex-direction:column;align-items:center;gap:.35rem;
+    transform:translateY(.6rem)}   /* optical: half the Hz line, so the canvas centres */
   #orbCore{position:relative}   /* bars anchor to the circle itself, not circle + text */
   #orb{width:min(250px,60vw);aspect-ratio:1;display:block}
   #orbTxt{display:flex;flex-direction:column;align-items:center;gap:.1rem}
@@ -137,15 +141,10 @@
 
   /* ---------- desktop: the lab at full size ---------- */
   @media (min-width:1100px) and (min-height:640px){
-    /* three regions — banner/hero above, orb dead-centre, details below —
-       so the eclipse anchors the vertical middle of the screen */
-    #lab{display:grid;grid-template-rows:minmax(0,1fr) auto minmax(0,1fr);
-      align-items:center;justify-items:center;gap:0;padding:64px 4vw 64px}
-    #labTop{align-self:end;margin-bottom:1.6rem;gap:1.3rem}
-    #labBot{align-self:start;margin-top:1.6rem;gap:1.3rem}
-    #orbWrap{transform:translateY(2.1rem)}  /* optical: canvas centre = viewport centre */
-    #chakSay{font-size:2.6rem}
-    #chakName{font-size:.9rem}
+    #lab{padding:64px 4vw 64px}
+    #labTop{margin-bottom:1.6rem;gap:1.3rem}
+    #labBot{margin-top:1.6rem;gap:1.3rem}
+    #chakSay{font-size:2.1rem}
     #hzTxt{font-size:.85rem}
     #orb{width:min(500px,52vh)}
     #dDetails{font-size:.74rem}
@@ -371,7 +370,6 @@
   </div>
   <div id="hero">
     <div id="chakSay">&nbsp;</div>
-    <div id="chakName">&nbsp;</div>
   </div>
   </div>
   <div id="orbWrap">
@@ -504,7 +502,7 @@
   </div>
 </div>
 
-<script src="vox-engine.js?v=0.14.0"></script>
+<script src="vox-engine.js?v=0.14.1"></script>
 <script>
 (()=>{
 "use strict";
@@ -824,10 +822,8 @@ function updateDOM(){
     // holds steady through the whole chakra instead of flickering with vocal drift
     const lpn=lockedPC();
     const namePC=lpn!=null?lpn:pc;
-    $('chakSay').textContent=CHAKRA_SAY[namePC]||' ';
+    $('chakSay').textContent=namePC in CHAKRA_SAY?'“'+CHAKRA_SAY[namePC]+'”':'';
     $('chakSay').style.color=CHAKRAS[namePC][0];
-    $('chakName').textContent=CHAKRAS[namePC][1]||' ';
-    $('chakName').style.color=CHAKRAS[namePC][0];
     $('hzTxt').textContent=eng.f0.toFixed(1)+' Hz'+(jr.active?'':(Math.abs(cents)>120?'':(cents?'  ·  '+(cents>0?'+':'')+cents+'¢':'  ·  in tune')));
     $('tStab').innerHTML='±<b>'+eng.stab.toFixed(0)+'</b>¢';
     $('tStabS').textContent=eng.stab<6?'crystal steady':eng.stab<15?'steady':eng.stab<30?'wavering':'searching';
@@ -842,10 +838,8 @@ function updateDOM(){
     $('tResS').textContent=eng.f1&&eng.f2?Math.round(eng.f1)+' · '+Math.round(eng.f2)+' Hz':'F1 · F2';
   } else {
     const lpi=lockedPC();   // in a journey the centre's name stays up even in silence
-    $('chakSay').textContent=lpi!=null?(CHAKRA_SAY[lpi]||' '):' ';
+    $('chakSay').textContent=lpi!=null&&lpi in CHAKRA_SAY?'“'+CHAKRA_SAY[lpi]+'”':'';
     $('chakSay').style.color=lpi!=null?CHAKRAS[lpi][0]:'';
-    $('chakName').textContent=lpi!=null?CHAKRAS[lpi][1]:' ';
-    $('chakName').style.color=lpi!=null?CHAKRAS[lpi][0]:'';
     $('hzTxt').textContent=engine.running?'listening…':'mic off';
   }
 }
@@ -1202,8 +1196,15 @@ function jrComplete(early){
           : 'A quiet visit — the chakras will wait for your voice.'))
       : 'Your '+sen+' chakra heard you.';
   $('qNote').textContent=''; $('qSub').textContent=''; $('qFill').style.width='0';
-  const ch=$('qChips'); ch.hidden=true; ch.innerHTML=''; ch.style.flexDirection='';
+  // singles keep the eclipse — the centre's colour, ring and corona, no number inside
+  const ch=$('qChips'); ch.innerHTML=''; ch.style.flexDirection='';
   ch.classList.remove('orbGrid');
+  ch.hidden=jr.mode==='full';
+  if(jr.mode!=='full'){
+    const d=document.createElement('div');
+    d.className='qEclipse'; d.style.color=CHAKRAS[spc][0];
+    ch.appendChild(d);
+  }
   $('qSkip').style.visibility='hidden';
   const qn=$('qNext');
   if(jr.mode==='full'){

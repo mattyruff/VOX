@@ -1,10 +1,11 @@
 # Minimal static file server for local preview/testing of the Vox app.
-# Serves the folder this script lives in on http://localhost:8137/
+# Serves the folder this script lives in on http://localhost:<port>/
+param([int]$Port = 8137)
 $root = $PSScriptRoot
 $listener = New-Object System.Net.HttpListener
-$listener.Prefixes.Add("http://localhost:8137/")
+$listener.Prefixes.Add("http://localhost:$Port/")
 $listener.Start()
-Write-Host "Vox dev server: http://localhost:8137/  (root: $root)"
+Write-Host "Vox dev server: http://localhost:$Port/  (root: $root)"
 while ($listener.IsListening) {
   try {
     $ctx = $listener.GetContext()

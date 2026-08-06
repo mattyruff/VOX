@@ -9,7 +9,7 @@
 <meta property="og:description" content="Discover the calming practice of vocal toning.">
 <meta name="theme-color" content="#04070a">
 <title>Vox — Vocal Toning</title>
-<meta name="vox-version" content="0.14.1">
+<meta name="vox-version" content="0.15.0">
 <style>
   /* Cormorant Garamond — SIL OFL, self-hosted so nothing is fetched off-origin
      (see fonts/OFL.txt) */
@@ -45,11 +45,24 @@
      at label size it flattens to one muddy tone, so this never goes on small text.
      Selectors carry the ids because #jiCard h2 etc. would out-specify a bare class
      and repaint solid gold over the transparent fill. */
-  #jiCard h2.gilded,#qTitle.gilded{
+  #veil h1.gilded,#jiCard h2.gilded,#qTitle.gilded{
     background:linear-gradient(180deg,#f9edc4,#e9c464 38%,#e3ba55 55%,#b8892f);
     -webkit-background-clip:text;background-clip:text;color:transparent}
   @supports not ((background-clip:text) or (-webkit-background-clip:text)){
-    #jiCard h2.gilded,#qTitle.gilded{color:var(--accent-pale);background:none}}
+    #veil h1.gilded,#jiCard h2.gilded,#qTitle.gilded{color:var(--accent-pale);background:none}}
+
+  /* ---------- veil: the gold home, two doors ---------- */
+  #veil{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:1.4rem;background:radial-gradient(120% 90% at 50% 42%,#08131130 0%,#04070a 72%);z-index:30;
+    transition:opacity .6s ease;padding:0 6vw;text-align:center}
+  #veil.gone{opacity:0;pointer-events:none}
+  #veil h1{font-family:var(--font-display);font-weight:300;font-size:2.6rem;letter-spacing:.42em;
+    text-transform:uppercase;color:var(--accent);padding-left:.42em;line-height:1}
+  #veil p{font-family:var(--font-display);color:var(--accent);
+    font-size:clamp(.8rem,3.7vw,1.05rem);letter-spacing:.14em;
+    text-transform:uppercase;max-width:min(360px,92vw);line-height:1.75;text-wrap:balance}
+  #veil .priv{font-family:var(--font-body);color:var(--muted);font-size:.62rem;letter-spacing:.14em;
+    text-transform:uppercase;opacity:.75;max-width:38ch;line-height:1.9}
 
   button.b{appearance:none;border:1px solid var(--accent);background:transparent;color:var(--accent);
     font-family:var(--font-display);font-size:1rem;letter-spacing:.22em;padding:.8rem 2rem;
@@ -77,10 +90,13 @@
     line-height:1.2;min-height:1.2em;white-space:nowrap;transition:color .3s}
   #hzTxt{font-size:.68rem;color:var(--muted);letter-spacing:.12em;opacity:.8;min-height:1em}
   #orbWrap{position:relative;display:flex;flex-direction:column;align-items:center;gap:.35rem;
-    transform:translateY(.6rem)}   /* optical: half the Hz line, so the canvas centres */
+    transform:translateY(2.6rem)}  /* optical: half the score block below, so the canvas centres */
   #orbCore{position:relative}   /* bars anchor to the circle itself, not circle + text */
   #orb{width:min(250px,60vw);aspect-ratio:1;display:block}
   #orbTxt{display:flex;flex-direction:column;align-items:center;gap:.1rem}
+  #cohNum{font-family:var(--font-body);font-variant-numeric:tabular-nums;font-weight:200;
+    font-size:2rem;color:var(--ink);line-height:1;transition:color .5s}
+  #cohWord{font-size:.6rem;letter-spacing:.3em;text-transform:uppercase;color:var(--muted);min-height:1em}
   #dDetails{background:none;border:none;color:var(--muted);font:inherit;font-size:.6rem;letter-spacing:.26em;
     text-transform:uppercase;cursor:pointer;padding:.35rem 1.2rem;opacity:.75;transition:.2s}
   #dDetails:hover{color:var(--accent);opacity:1}
@@ -147,6 +163,9 @@
     #chakSay{font-size:2.1rem}
     #hzTxt{font-size:.85rem}
     #orb{width:min(500px,52vh)}
+    #cohNum{font-size:3.1rem}
+    #cohWord{font-size:.78rem}
+    #orbWrap{transform:translateY(2.8rem)}
     #dDetails{font-size:.74rem}
     #tiles{grid-template-columns:repeat(4,minmax(160px,210px));gap:.9rem}
     .tile{padding:.9rem 1.05rem;border-radius:16px}
@@ -167,6 +186,11 @@
     .nbtn{width:34px;height:42px;font-size:1.3rem}
     #dTune{font-size:.78rem;padding:.5rem .7rem;border-radius:10px}
     #dEnd{font-size:.84rem;padding:.72rem 1.1rem;border-radius:12px}
+    /* home veil at desktop scale */
+    #veil{gap:2.4rem}
+    #veil h1{font-size:4.2rem;letter-spacing:.46em;padding-left:.46em}
+    #veil p{font-size:1.35rem;max-width:430px;letter-spacing:.18em;text-wrap:balance}
+    #veil .priv{font-size:.72rem;max-width:46ch}
     button.b{font-size:1.15rem;padding:1rem 2.8rem;letter-spacing:.24em}
   }
 
@@ -218,8 +242,9 @@
   #jiCard{position:relative;width:min(440px,92vw);max-height:92vh;overflow-y:auto;background:#071010;
     border:1px solid var(--line);border-radius:20px;padding:1.7rem 1.4rem 1.4rem;
     display:flex;flex-direction:column;gap:1rem;align-items:center;text-align:center}
-  .jipriv{font-family:var(--font-body);color:var(--muted);font-size:.6rem;letter-spacing:.14em;
-    text-transform:uppercase;opacity:.7;max-width:40ch;line-height:1.9;margin-top:.2rem}
+  #jiClose{position:absolute;top:10px;right:14px;background:none;border:none;color:var(--muted);
+    font-size:1.25rem;cursor:pointer;line-height:1}
+  #jiClose:hover{color:var(--accent)}
   #jiCard h2{font-family:var(--font-display);font-weight:400;font-size:1.05rem;letter-spacing:.3em;text-transform:uppercase;color:var(--accent-pale)}
   #jiCard>p{color:var(--muted);font-size:.8rem;line-height:1.7;max-width:38ch}
   #jiRows{display:flex;flex-direction:column;gap:.45rem;width:100%}
@@ -282,6 +307,9 @@
   #qCard.single #qChips{flex:1;display:flex;align-items:center;justify-content:center;width:100%}
   #qCard.single #qSkip{display:none}                       /* no ghost flex space */
   #qCard.single #qBtns{justify-content:center;width:100%}
+  /* what the number means, at the moment the user first wonders */
+  #qCohCap{font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);
+    opacity:.85;line-height:1.9;max-width:36ch;text-align:center}
   #qBar{width:70%;height:3px;background:rgba(var(--accent-rgb),.14);border-radius:2px;overflow:hidden}
 
   /* ---------- chakra journey banner ---------- */
@@ -349,6 +377,7 @@
     #qChips.orbGrid{max-width:440px;gap:1.1rem .9rem}   /* rows of 4+3, not 5+2 */
     #qCard.single #qTitle{font-size:1.6rem}
     #qCard.single #qText{font-size:1.02rem}
+    #qCohCap{font-size:.7rem}
   }
   #qBar i{display:block;height:100%;width:0;background:var(--accent)}
   #qBtns{display:flex;gap:.7rem;margin-top:.15rem}
@@ -358,6 +387,16 @@
 
 <div id="nav">
   <a href="./" class="active">Vox</a>
+</div>
+
+<div id="veil">
+  <h1 class="gilded">Vox</h1>
+  <p>Discover the calming practice of vocal toning.</p>
+  <div class="cta" style="display:flex;gap:.7rem;flex-wrap:wrap;justify-content:center">
+    <button class="b solid" id="vJourney">Chakra Journey</button>
+    <button class="b" id="vLab">Vocal Lab</button>
+  </div>
+  <p class="priv">Everything runs in your browser. Your voice is never recorded, stored, or uploaded.</p>
 </div>
 
 <main id="lab" class="hide quiet">
@@ -376,7 +415,7 @@
     <div id="orbCore">
       <canvas id="orb"></canvas>
     </div>
-    <div id="orbTxt"><div id="hzTxt">listening…</div></div>
+    <div id="orbTxt"><div id="cohNum">—</div><div id="cohWord">COHERENCE</div><div id="hzTxt">listening…</div></div>
   </div>
   <div id="labBot">
   <button id="dDetails">· details ·</button>
@@ -449,12 +488,12 @@
 
 <div id="jIntro" class="hide">
   <div id="jiCard">
+    <button id="jiClose" aria-label="Close">×</button>
     <h2 class="gilded">The Seven Chakras</h2>
     <p>Hum a steady tone for five seconds — a dot lights for each one.
        Tap a chakra to focus on it, or walk all seven.</p>
     <div id="jiRows"></div>
     <button class="jbtn" id="jiBegin">BEGIN JOURNEY</button>
-    <p class="jipriv">Everything runs in your browser. Your voice is never recorded, stored, or uploaded.</p>
   </div>
 </div>
 
@@ -467,6 +506,7 @@
     <div id="qNote">—</div>
     <div id="qSub"></div>
     <div class="qchips" id="qChips" hidden></div>
+    <div id="qCohCap" hidden></div>
     <div id="qBar"><i id="qFill"></i></div>
     <div id="qBtns">
       <button class="b" id="qSkip">Skip</button>
@@ -502,7 +542,7 @@
   </div>
 </div>
 
-<script src="vox-engine.js?v=0.14.1"></script>
+<script src="vox-engine.js?v=0.15.0"></script>
 <script>
 (()=>{
 "use strict";
@@ -824,6 +864,8 @@ function updateDOM(){
     const namePC=lpn!=null?lpn:pc;
     $('chakSay').textContent=namePC in CHAKRA_SAY?'“'+CHAKRA_SAY[namePC]+'”':'';
     $('chakSay').style.color=CHAKRAS[namePC][0];
+    $('cohNum').textContent=Math.round(eng.cohShow);
+    $('cohNum').style.color=CHAKRAS[namePC][0];
     $('hzTxt').textContent=eng.f0.toFixed(1)+' Hz'+(jr.active?'':(Math.abs(cents)>120?'':(cents?'  ·  '+(cents>0?'+':'')+cents+'¢':'  ·  in tune')));
     $('tStab').innerHTML='±<b>'+eng.stab.toFixed(0)+'</b>¢';
     $('tStabS').textContent=eng.stab<6?'crystal steady':eng.stab<15?'steady':eng.stab<30?'wavering':'searching';
@@ -840,6 +882,8 @@ function updateDOM(){
     const lpi=lockedPC();   // in a journey the centre's name stays up even in silence
     $('chakSay').textContent=lpi!=null&&lpi in CHAKRA_SAY?'“'+CHAKRA_SAY[lpi]+'”':'';
     $('chakSay').style.color=lpi!=null?CHAKRAS[lpi][0]:'';
+    $('cohNum').textContent=eng.cohShow>1?Math.round(eng.cohShow):'—';
+    $('cohNum').style.color='';
     $('hzTxt').textContent=engine.running?'listening…':'mic off';
   }
 }
@@ -904,8 +948,9 @@ function closeSummary(){
   engine.session.tones=[]; engine.session.start=0;
   chart.coh.length=0; chart.f0.length=0;
   $('summary').classList.add('hide');
+  leaveLab();
   lab.classList.add('hide'); dock.classList.add('hide');
-  jrEntry();
+  veil.classList.remove('gone');
 }
 
 /* ---------- attunement: walk the scale, find your tone ----------
@@ -1099,6 +1144,7 @@ function jrEntry(){
 let jrLastAttempt=null;                 // what TRY AGAIN should retry after a mic denial
 async function jrBegin(mode,idx){
   try{
+    lastEntry='journey';
     jrLastAttempt=[mode,idx];
     $('jIntro').classList.add('hide');
     if(!engine.running && micApiMissing()){ showMicHelp('inapp'); return; }
@@ -1112,6 +1158,7 @@ async function jrBegin(mode,idx){
 }
 function journeyStart(mode2,idx){
   jr.active=true; jr.mode=mode2; jr.idx=mode2==='full'?0:idx; jr.scores=[];
+  leaveLab();                            // a journey begun from the Lab dock un-labs cleanly
   $('quiz').classList.add('hide');
   $('jBanner').classList.remove('hide');
   dock.classList.add('hide'); $('jDock').classList.remove('hide');
@@ -1180,31 +1227,45 @@ function jrComplete(early){
   $('jDock').classList.add('hide');      // dock stays hidden: journey is the whole app for now
   ovlMode='jr'; jr.ui='done';
   $('quiz').classList.remove('hide'); $('qDots').innerHTML='';
-  const walked=jr.scores.length;             // centres completed before the exit
+  const scored=jr.scores.filter(s=>s.coh>0);
+  const best=scored.slice().sort((a,b)=>b.coh-a.coh)[0];
   const [spc,sen,ssk]=CHAKRA_SEQ[jr.idx];
   $('qTitle').textContent=jr.mode==='full'?(early?'Journey ended':'Journey complete'):(sen+' — '+ssk);
   $('qTitle').style.color=jr.mode==='full'?'':CHAKRAS[spc][0];   // title wears the centre's colour
   $('qTitle').classList.toggle('gilded',jr.mode==='full');       // leaf only when no chakra to encode
   $('qCard').classList.toggle('single',jr.mode!=='full');        // singles stretch to fill
-  // no numbers anywhere: the words are the whole scorecard
   $('qText').textContent=
     jr.mode==='full'
       ? (!early
-        ? 'You honored all seven chakras.'
-        : (walked
-          ? 'You walked '+(['one','two','three','four','five','six'][walked-1]||walked)+' of the seven centres.'
-          : 'A quiet visit — the chakras will wait for your voice.'))
+        ? 'You honored all seven chakras. These numbers are awareness, not judgment.'
+        : (best
+          ? 'Your voice glowed brightest at the '+CHAKRA_SEQ[best.i][1]+' ('+CHAKRA_SEQ[best.i][2]+'), coherence '+Math.round(best.coh)+'.'
+          : 'A quiet one — Vox barely heard your voice this time.'))
       : 'Your '+sen+' chakra heard you.';
   $('qNote').textContent=''; $('qSub').textContent=''; $('qFill').style.width='0';
-  // singles keep the eclipse — the centre's colour, ring and corona, no number inside
-  const ch=$('qChips'); ch.innerHTML=''; ch.style.flexDirection='';
-  ch.classList.remove('orbGrid');
-  ch.hidden=jr.mode==='full';
-  if(jr.mode!=='full'){
+  const ch=$('qChips'); ch.hidden=false; ch.innerHTML=''; ch.style.flexDirection='';
+  ch.classList.toggle('orbGrid',jr.mode==='full');
+  if(jr.mode==='full'){
+    // seven mini eclipses, root to crown, each wearing its centre's colour
+    jr.scores.forEach(s=>{
+      const [pc,en]=CHAKRA_SEQ[s.i];
+      const w=document.createElement('div');
+      w.className='qEclipseWrap'; w.style.color=CHAKRAS[pc][0];
+      w.innerHTML='<div class="qEclipse mini"><span>'+(s.coh>0?Math.round(s.coh):'—')+'</span></div>'+
+        '<div class="qeName">'+en+'</div>';
+      ch.appendChild(w);
+    });
+  } else {
+    // the score inside a mini eclipse, number only, wearing the centre's colour
+    const s=jr.scores[0];
     const d=document.createElement('div');
     d.className='qEclipse'; d.style.color=CHAKRAS[spc][0];
+    d.innerHTML='<span>'+(s&&s.coh>0?Math.round(s.coh):'—')+'</span>';
     ch.appendChild(d);
   }
+  const cap=$('qCohCap');
+  cap.hidden=false;
+  cap.textContent='coherence — how steady and clear '+(jr.mode==='full'?'each tone was':'your tone was')+' · calm beats loud';
   $('qSkip').style.visibility='hidden';
   const qn=$('qNext');
   if(jr.mode==='full'){
@@ -1295,13 +1356,30 @@ function jrProgress(){
 }
 
 /* ---------- wiring ---------- */
-const dock=$('dock');
-function reveal(){ lab.classList.remove('hide'); }   // dock stays shelved with the lab
-function goHome(){                       // journey over: back to the Seven Chakras page
+const veil=$('veil'), dock=$('dock');
+function reveal(){ veil.classList.add('gone'); lab.classList.remove('hide'); }   // dock stays shelved with the lab
+function leaveLab(){ labMode=false; lab.classList.remove('labmode'); }
+function goHome(){                       // session over: back to the gold home
   $('quiz').classList.add('hide');
   if(engine.running) stopMic();
+  leaveLab();
   lab.classList.add('hide'); dock.classList.add('hide');
-  jrEntry();
+  veil.classList.remove('gone');
+}
+// the Vocal Lab: free toning with every raw value on the table
+let labMode=false, lastEntry='journey';  // what TRY AGAIN should re-enter
+async function labEnter(){
+  try{
+    lastEntry='lab';
+    if(!engine.running && micApiMissing()){ showMicHelp('inapp'); return; }
+    if(!engine.running) await useMic();  // failure already shows the help panel
+    if(!engine.running) return;
+    labMode=true; lab.classList.add('labmode');
+    dock.classList.remove('hide');
+    $('jBanner').classList.add('hide'); $('jDock').classList.add('hide');
+    $('dDetails').style.display='';     // a journey may have hidden it
+    drawer.classList.remove('closed'); resize();   // all raw values visible at once
+  }catch(e){ showMicHelp('denied'); }
 }
 function syncUI(){
   $('dMic').classList.toggle('active',engine.running);
@@ -1349,6 +1427,10 @@ $('dJourney').onclick=jrEntry;
 $('jPlay').onclick=jrPlayToggle;
 $('jNext').onclick=()=>{ if(jr.active) jrNext(); };   // also shortcuts the wind-down
 $('jiBegin').onclick=()=>jrBegin('full',0);
+$('jiClose').onclick=()=>$('jIntro').classList.add('hide');
+$('vJourney').onclick=jrEntry;
+$('vLab').onclick=labEnter;
+$('dQuiz').style.display='none';         // Find-your-tone stays dormant for now
 $('mhClose').onclick=()=>$('micHelp').classList.add('hide');
 $('mhRetry').onclick=async()=>{
   if(micHelpKind==='inapp'){
@@ -1362,7 +1444,8 @@ $('mhRetry').onclick=async()=>{
     return;
   }
   $('micHelp').classList.add('hide');
-  if(jrLastAttempt) jrBegin(jrLastAttempt[0],jrLastAttempt[1]);
+  if(lastEntry==='lab') labEnter();
+  else if(jrLastAttempt) jrBegin(jrLastAttempt[0],jrLastAttempt[1]);
 };
 $('jEnd').onclick=()=>{
   if(!jr.active) return;
@@ -1412,7 +1495,6 @@ engine.onFrame(()=>{
 // go — claim audio focus on arrival so a forgotten gong tab goes quiet immediately
 claimAudio();
 resize(); syncUI(); requestAnimationFrame(draw);
-jrEntry();                 // no landing page: the Seven Chakras ARE the home screen
 window.__updateDOM=updateDOM;   // dev hook (like __jrFast): headless tests pump the DOM without rAF
 })();
 </script>

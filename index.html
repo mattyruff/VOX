@@ -9,7 +9,7 @@
 <meta property="og:description" content="Discover the calming practice of vocal toning.">
 <meta name="theme-color" content="#04070a">
 <title>Vox — Vocal Toning</title>
-<meta name="vox-version" content="0.15.0">
+<meta name="vox-version" content="0.15.1">
 <style>
   /* Cormorant Garamond — SIL OFL, self-hosted so nothing is fetched off-origin
      (see fonts/OFL.txt) */
@@ -45,11 +45,11 @@
      at label size it flattens to one muddy tone, so this never goes on small text.
      Selectors carry the ids because #jiCard h2 etc. would out-specify a bare class
      and repaint solid gold over the transparent fill. */
-  #veil h1.gilded,#jiCard h2.gilded,#qTitle.gilded{
+  #veil h1.gilded,#jiCard h2.gilded,#qTitle.gilded,#chakName.gilded{
     background:linear-gradient(180deg,#f9edc4,#e9c464 38%,#e3ba55 55%,#b8892f);
     -webkit-background-clip:text;background-clip:text;color:transparent}
   @supports not ((background-clip:text) or (-webkit-background-clip:text)){
-    #veil h1.gilded,#jiCard h2.gilded,#qTitle.gilded{color:var(--accent-pale);background:none}}
+    #veil h1.gilded,#jiCard h2.gilded,#qTitle.gilded,#chakName.gilded{color:var(--accent-pale);background:none}}
 
   /* ---------- veil: the gold home, two doors ---------- */
   #veil{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
@@ -83,8 +83,11 @@
   #labTop{align-self:end;margin-bottom:1.2rem}
   #labBot{align-self:start;margin-top:1.2rem}
 
-  #hero{display:flex;flex-direction:column;align-items:center}
-  /* the affirmation is the whole hero: tracked caps in quotation marks */
+  #hero{display:flex;flex-direction:column;align-items:center;gap:.2rem}
+  /* the centre's name in gold leaf, over the affirmation in tracked caps + quotes */
+  #chakName{font-family:var(--font-display);font-weight:400;font-size:1.02rem;letter-spacing:.3em;
+    text-transform:uppercase;text-align:center;padding-left:.3em;   /* re-centres tracked caps */
+    line-height:1.3;min-height:1.3em;white-space:nowrap}
   #chakSay{font-family:var(--font-display);font-weight:400;font-size:1.35rem;letter-spacing:.22em;
     text-transform:uppercase;text-align:center;padding-left:.22em;   /* re-centres tracked caps */
     line-height:1.2;min-height:1.2em;white-space:nowrap;transition:color .3s}
@@ -160,6 +163,7 @@
     #lab{padding:64px 4vw 64px}
     #labTop{margin-bottom:1.6rem;gap:1.3rem}
     #labBot{margin-top:1.6rem;gap:1.3rem}
+    #chakName{font-size:1.5rem}
     #chakSay{font-size:2.1rem}
     #hzTxt{font-size:.85rem}
     #orb{width:min(500px,52vh)}
@@ -192,6 +196,25 @@
     #veil p{font-size:1.35rem;max-width:430px;letter-spacing:.18em;text-wrap:balance}
     #veil .priv{font-size:.72rem;max-width:46ch}
     button.b{font-size:1.15rem;padding:1rem 2.8rem;letter-spacing:.24em}
+  }
+
+  /* ---------- Vocal Lab: natural top-to-bottom flow ----------
+     The journey's dead-centre grid assumes an empty bottom region; the Lab packs
+     tiles + strip there, so it flows instead and everything clears the fixed dock.
+     Must sit AFTER the desktop block so these win at every size. */
+  #lab.labmode{display:flex;flex-direction:column;justify-content:flex-start;
+    gap:1.1rem;padding:56px 4vw 150px}
+  /* sections keep their natural height and the page scrolls — flex-shrink would
+     compress them into the fixed container and push the strip out of reach */
+  #lab.labmode #labTop,#lab.labmode #orbWrap,#lab.labmode #labBot{flex:none}
+  #lab.labmode #labTop{margin-bottom:0}
+  #lab.labmode #labBot{margin-top:0}
+  #lab.labmode #orbWrap{transform:none}
+  @media (min-width:1100px) and (min-height:640px){
+    #lab.labmode{padding-bottom:170px}   /* desktop dock is taller */
+    /* the Lab shares the screen with tiles + strip: a slightly smaller orb keeps
+       the whole instrument visible with air between the strip and the dock */
+    #lab.labmode #orb{width:min(400px,42vh)}
   }
 
   /* ---------- summary ---------- */
@@ -408,6 +431,7 @@
     <button id="jEnd" title="End journey" aria-label="End journey">✕</button>
   </div>
   <div id="hero">
+    <div id="chakName" class="gilded">&nbsp;</div>
     <div id="chakSay">&nbsp;</div>
   </div>
   </div>
@@ -442,8 +466,9 @@
     <svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg>
   </button>
   <div class="sep"></div>
-  <button class="ic" id="dDrone" title="Reference drone" aria-label="Reference drone on or off">
-    <svg viewBox="0 0 24 24"><path d="M12 3v10"/><path d="M9 3h6"/><circle cx="12" cy="17" r="4"/></svg>
+  <button class="ic" id="dDrone" title="Reference drone" aria-label="Start reference drone">
+    <svg id="dPlayIco" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+    <svg id="dPauseIco" viewBox="0 0 24 24" style="display:none"><path d="M7 5h4v14H7z M13 5h4v14h-4z"/></svg>
   </button>
   <button class="nbtn" id="dNoteDn" aria-label="Drone note down">−</button>
   <div id="droneNote"><b id="dnNote">A</b><span id="dnChak">Third Eye</span></div>
@@ -542,7 +567,7 @@
   </div>
 </div>
 
-<script src="vox-engine.js?v=0.15.0"></script>
+<script src="vox-engine.js?v=0.15.1"></script>
 <script>
 (()=>{
 "use strict";
@@ -864,6 +889,7 @@ function updateDOM(){
     const namePC=lpn!=null?lpn:pc;
     $('chakSay').textContent=namePC in CHAKRA_SAY?'“'+CHAKRA_SAY[namePC]+'”':'';
     $('chakSay').style.color=CHAKRAS[namePC][0];
+    $('chakName').textContent=namePC in CHAKRA_SAY?CHAKRAS[namePC][1]+' Chakra':'';
     $('cohNum').textContent=Math.round(eng.cohShow);
     $('cohNum').style.color=CHAKRAS[namePC][0];
     $('hzTxt').textContent=eng.f0.toFixed(1)+' Hz'+(jr.active?'':(Math.abs(cents)>120?'':(cents?'  ·  '+(cents>0?'+':'')+cents+'¢':'  ·  in tune')));
@@ -882,6 +908,7 @@ function updateDOM(){
     const lpi=lockedPC();   // in a journey the centre's name stays up even in silence
     $('chakSay').textContent=lpi!=null&&lpi in CHAKRA_SAY?'“'+CHAKRA_SAY[lpi]+'”':'';
     $('chakSay').style.color=lpi!=null?CHAKRAS[lpi][0]:'';
+    $('chakName').textContent=lpi!=null&&lpi in CHAKRA_SAY?CHAKRAS[lpi][1]+' Chakra':'';
     $('cohNum').textContent=eng.cohShow>1?Math.round(eng.cohShow):'—';
     $('cohNum').style.color='';
     $('hzTxt').textContent=engine.running?'listening…':'mic off';
@@ -1368,6 +1395,7 @@ function goHome(){                       // session over: back to the gold home
 }
 // the Vocal Lab: free toning with every raw value on the table
 let labMode=false, lastEntry='journey';  // what TRY AGAIN should re-enter
+let labLastVoice=0;                      // arms the drone's 10s silence fade
 async function labEnter(){
   try{
     lastEntry='lab';
@@ -1375,6 +1403,7 @@ async function labEnter(){
     if(!engine.running) await useMic();  // failure already shows the help panel
     if(!engine.running) return;
     labMode=true; lab.classList.add('labmode');
+    labLastVoice=performance.now();
     dock.classList.remove('hide');
     $('jBanner').classList.add('hide'); $('jDock').classList.add('hide');
     $('dDetails').style.display='';     // a journey may have hidden it
@@ -1384,6 +1413,10 @@ async function labEnter(){
 function syncUI(){
   $('dMic').classList.toggle('active',engine.running);
   $('dDrone').classList.toggle('active',droneOn);
+  // SVG elements ignore the HTML `hidden` property — toggle display directly
+  $('dPlayIco').style.display=droneOn?'none':'';
+  $('dPauseIco').style.display=droneOn?'':'none';
+  $('dDrone').setAttribute('aria-label',droneOn?'Pause reference drone':'Start reference drone');
   const dm=DRONES[droneIdx];
   $('dnNote').textContent=NOTES[dm%12];
   $('dnChak').textContent=CHAKRAS[dm%12][1];
@@ -1454,7 +1487,10 @@ $('jEnd').onclick=()=>{
   jrComplete(jr.mode==='full'&&jr.scores.length<7);
 };
 $('dMic').onclick=useMic;
-$('dDrone').onclick=()=>droneSet(!droneOn);
+$('dDrone').onclick=()=>{
+  if(!droneOn) labLastVoice=performance.now();   // fresh grace period on play
+  droneSet(!droneOn); syncUI();
+};
 $('dNoteDn').onclick=()=>droneStep(-1);
 $('dNoteUp').onclick=()=>droneStep(1);
 $('dOctDn').onclick=()=>droneOct(-1);
@@ -1485,6 +1521,12 @@ document.addEventListener('visibilitychange',()=>{
 
 // each analysed frame drives the tone test / journey, plus the optional debug log
 engine.onFrame(()=>{
+  // Lab drone: fade to silence after 10s without voice; play brings it back by hand
+  if(labMode&&engine.running){
+    const nowL=performance.now();
+    if(eng.voiced) labLastVoice=nowL;
+    else if(droneOn&&nowL-labLastVoice>10000){ droneSet(false,DRONE_FADE); syncUI(); }
+  }
   if(quiz.active) quizTick();
   if(jr.active) jrTick();
   if(window.__log) __log.push([performance.now()/1000,eng.voiced?1:0,+eng.f0.toFixed(2),+eng.clarity.toFixed(3),

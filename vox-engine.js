@@ -72,8 +72,11 @@ class VoxEngine {
     // ---- DSP working state ----
     this.linBuf = null;
     this.f0Med = [];                       // median-of-5 anti-octave-glitch
-    this.pHist = new Float32Array(72);     // ~1.2s of cents history for stability
+    this.pHist = new Float32Array(72);     // cents history for stability…
+    this.pT = new Float32Array(72);        // …with timestamps: the window is TIME-based
     this.pHistN = 0; this.pHistI = 0;
+    this.stabFresh = true;                 // next stability reading snaps in, no easing
+    this._lastT = 0;                       // last analyze() time, for dt-based smoothing
     this.tone = null;                      // current tone being segmented
 
     // ---- live feature state (read by the UI each frame) ----
@@ -173,6 +176,7 @@ class VoxEngine {
     if(this._loopTimer){ clearTimeout(this._loopTimer); this._loopTimer=null; }
     this._looping = false;
     this.state.voiced = false; this.state.vadHold = 0; this.state.breath = 0;
+    this._lastT = 0; this.pHistN = 0; this.pHistI = 0; this.stabFresh = true;
   }
 
   _startLoop(){
@@ -220,6 +224,7 @@ class VoxEngine {
   // ---------- tone segmentation ----------
   beginTone(){
     this.tone={t0:performance.now(), n:0, f0s:[], coh:0, stab:0, hnr:0, jit:0, shim:0, rich:0, rms:0};
+    this.stabFresh=true;                   // each tone's first stability reading snaps in
   }
   endTone(){
     const tone=this.tone;
@@ -268,14 +273,23 @@ class VoxEngine {
     const eng=this.state;
     if(!this.analyser||this.mode!=='mic') return;
     const td=this.td, fd=this.fd, SR=this.SR, binHz=this.binHz, tuneA=this.tuneA;
-    const f0Med=this.f0Med, pHist=this.pHist;
+    const f0Med=this.f0Med, pHist=this.pHist, pT=this.pT;
     this.analyser.getFloatTimeDomainData(td);
     this.analyser.getFloatFrequencyData(fd);
+
+    // TIME-based smoothing: the loop runs 60fps on desktop, ~30fps on phones and
+    // 4fps hidden — per-frame alphas made every filter 2× slower on mobile. K(r)
+    // converts a per-second rate into this frame's blend factor, so the engine
+    // feels identical at any frame rate. Rates chosen to match the desktop feel.
+    const nowT=performance.now();
+    const dt=this._lastT?clamp((nowT-this._lastT)/1000,0.004,0.3):1/60;
+    this._lastT=nowT;
+    const K=r=>1-Math.exp(-r*dt);
 
     // amplitude envelope
     let s=0; for(let i=0;i<td.length;i++) s+=td[i]*td[i];
     const rms=Math.sqrt(s/td.length);
-    eng.lvl+=(rms-eng.lvl)*0.3;
+    eng.lvl+=(rms-eng.lvl)*K(21);
 
     // pitch + periodicity — measured whenever there is anything at all to measure,
     // not merely above the gate, so the floor logic below can tell a voice from noise
@@ -286,15 +300,15 @@ class VoxEngine {
     // voice activity detection: energy above the adaptive floor AND periodic
     const gate=Math.max(eng.floor*FLOOR_MULT, GATE_MIN);
     const voicedNow=(rms>gate && p.r>0.60 && p.f0>=70 && p.f0<=800);
-    if(voicedNow) eng.vadHold=14;                 // ~0.25s hangover
-    else if(eng.vadHold>0) eng.vadHold--;
+    if(voicedNow) eng.vadHold=0.25;               // hangover in SECONDS, not frames
+    else if(eng.vadHold>0) eng.vadHold=Math.max(0,eng.vadHold-dt);
     const wasVoiced=eng.voiced;
     eng.voiced=eng.vadHold>0;
     // Learn the noise floor ONLY from aperiodic quiet. Adapting while the user was
     // voicing-but-undetected let the gate chase their own voice upward and lock them
     // out for good. Rises slowly, falls quickly, and is capped.
     if(!eng.voiced && !periodic){
-      eng.floor+=(rms-eng.floor)*(rms>eng.floor?0.008:0.05);
+      eng.floor+=(rms-eng.floor)*(rms>eng.floor?K(0.5):K(3));
       if(eng.floor>FLOOR_MAX) eng.floor=FLOOR_MAX;
     }
 
@@ -313,28 +327,42 @@ class VoxEngine {
       // jitter: frame-to-frame period perturbation (RAP-like)
       if(eng.prevF0>0){
         const jRaw=Math.abs(1/f0-1/eng.prevF0)*f0;
-        eng.jitter+=(clamp(jRaw,0,0.08)-eng.jitter)*0.06;
+        eng.jitter+=(clamp(jRaw,0,0.08)-eng.jitter)*K(3.7);
       }
       eng.prevF0=f0;
       // shimmer: frame-to-frame amplitude perturbation
       if(eng.prevRms>0){
         const shRaw=Math.abs(rms-eng.prevRms)/Math.max(rms,eng.prevRms);
-        eng.shimmer+=(clamp(shRaw,0,0.6)-eng.shimmer)*0.06;
+        eng.shimmer+=(clamp(shRaw,0,0.6)-eng.shimmer)*K(3.7);
       }
       eng.prevRms=rms;
       // HNR from normalized ACF peak (Boersma)
       const r=clamp(p.r,0.01,0.999);
       const hnrRaw=10*Math.log10(r/(1-r));
-      eng.hnr+=(clamp(hnrRaw,0,35)-eng.hnr)*0.08;
+      eng.hnr+=(clamp(hnrRaw,0,35)-eng.hnr)*K(5);
 
       eng.f0=f0;
       eng.midiC=69+12*Math.log2(f0/tuneA);
-      // pitch stability: rolling std-dev in cents over ~1.2s
-      pHist[this.pHistI]=eng.midiC*100; this.pHistI=(this.pHistI+1)%pHist.length; if(this.pHistN<pHist.length)this.pHistN++;
-      if(this.pHistN>18){
-        let m=0; for(let i=0;i<this.pHistN;i++)m+=pHist[i]; m/=this.pHistN;
-        let v=0; for(let i=0;i<this.pHistN;i++){const d=pHist[i]-m;v+=d*d;}
-        eng.stab+=(Math.min(99,Math.sqrt(v/this.pHistN))-eng.stab)*0.15;
+      // pitch stability: rolling std-dev in cents over the last ~1.2s of THIS tone.
+      // The onset scoop (first 250ms) is excluded so landing on a note is not
+      // punished as wobble, and each tone's first reading SNAPS in instead of
+      // easing down from the 99¢ cold-start — the score answers within ~0.5s.
+      if(tone && nowT-tone.t0>250){
+        pHist[this.pHistI]=eng.midiC*100; pT[this.pHistI]=nowT;
+        this.pHistI=(this.pHistI+1)%pHist.length;
+        if(this.pHistN<pHist.length)this.pHistN++;
+      }
+      {
+        const tCut=nowT-1200;
+        let m=0,n=0;
+        for(let i=0;i<this.pHistN;i++) if(pT[i]>=tCut){ m+=pHist[i]; n++; }
+        if(n>=8){
+          m/=n;
+          let v=0; for(let i=0;i<this.pHistN;i++) if(pT[i]>=tCut){ const d=pHist[i]-m; v+=d*d; }
+          const sd=Math.min(99,Math.sqrt(v/n));
+          if(this.stabFresh){ eng.stab=sd; this.stabFresh=false; }
+          else eng.stab+=(sd-eng.stab)*K(10);
+        }
       }
 
       // ---- spectral features ----
@@ -343,7 +371,7 @@ class VoxEngine {
       let num=0,den=0;
       const i0=Math.max(1,(80/binHz)|0), i1=Math.min(lin.length,(6000/binHz)|0);
       for(let i=i0;i<i1;i++){ num+=i*binHz*lin[i]; den+=lin[i]; }
-      if(den>0) eng.centroid+=((num/den)-eng.centroid)*0.12;
+      if(den>0) eng.centroid+=((num/den)-eng.centroid)*K(7.7);
       // harmonic richness + timbre profile: overtone energy relative to the fundamental
       let h1=0, hs=0, nH=0;
       for(let k=1;k<=10;k++){
@@ -353,11 +381,11 @@ class VoxEngine {
         if(k===1) h1=a; else { hs+=a; if(h1>0&&a>h1*0.02) nH++; }
       }
       const richRaw=h1>0?clamp(hs/h1/1.6,0,1):0;
-      eng.rich+=(richRaw-eng.rich)*0.1;
+      eng.rich+=(richRaw-eng.rich)*K(6.3);
       eng.nHarm=nH;
       // formants / resonance mapping: strongest spectral peaks under the vocal envelope
       const fm=this.formants(lin,f0);
-      if(fm){ eng.f1+=(fm[0]-eng.f1)*0.15; eng.f2+=(fm[1]-eng.f2)*0.15; eng.vowel=vowelName(eng.f1,eng.f2); }
+      if(fm){ eng.f1+=(fm[0]-eng.f1)*K(10); eng.f2+=(fm[1]-eng.f2)*K(10); eng.vowel=vowelName(eng.f1,eng.f2); }
 
       // breath: current tone length
       if(tone) eng.breath=(performance.now()-tone.t0)/1000;
@@ -380,7 +408,9 @@ class VoxEngine {
       }
       eng.pitch01=sPitch;                                   // exposed for UI cues
       eng.coh=100*(0.30*sStab+0.25*sClar+0.20*sSmooth+0.15*sRich+0.10*sBreath)*sPitch;
-      eng.cohShow+=(eng.coh-eng.cohShow)*0.08;
+      // asymmetric display: rises fast so landing on pitch answers immediately,
+      // falls a touch calmer so the number breathes instead of twitching
+      eng.cohShow+=(eng.coh-eng.cohShow)*(eng.coh>eng.cohShow?K(13):K(8));
 
       if(tone){
         tone.n++; tone.f0s.push(f0);
@@ -389,7 +419,7 @@ class VoxEngine {
       }
     } else {
       eng.prevF0=0; eng.prevRms=0; f0Med.length=0;
-      if(!eng.voiced){ eng.cohShow*=0.985; eng.breath=0; this.pHistN=0; this.pHistI=0; }
+      if(!eng.voiced){ eng.cohShow*=Math.pow(0.4,dt); eng.breath=0; this.pHistN=0; this.pHistI=0; }
     }
     this._emitFrame();
   }

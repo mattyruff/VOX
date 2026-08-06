@@ -9,7 +9,7 @@
 <meta property="og:description" content="Discover the calming practice of vocal toning.">
 <meta name="theme-color" content="#04070a">
 <title>Vox — Vocal Toning</title>
-<meta name="vox-version" content="0.15.1">
+<meta name="vox-version" content="0.16.0">
 <style>
   /* Cormorant Garamond — SIL OFL, self-hosted so nothing is fetched off-origin
      (see fonts/OFL.txt) */
@@ -567,7 +567,7 @@
   </div>
 </div>
 
-<script src="vox-engine.js?v=0.15.1"></script>
+<script src="vox-engine.js?v=0.16.0"></script>
 <script>
 (()=>{
 "use strict";
@@ -673,6 +673,9 @@ for(let m=36;m<=84;m++){ if(CHAKRA_PCS.indexOf(m%12)>=0) DRONES.push(m); }
 if(homeNote) homeNote=snapChakra(homeNote);      // legacy saved notes may be accidentals
 let droneIdx=DRONES.indexOf(snapChakra(homeNote||57));   // your found note, else A3
 const setDroneMidi=m=>{ droneIdx=DRONES.indexOf(snapChakra(m)); };
+// pitch-gated coherence: the engine scores against the current centre during a
+// journey, against the drone note when it sounds in the Lab, and free-form otherwise
+function syncTarget(){ engine.setTarget(jr.active||droneOn?DRONES[droneIdx]:null); }
 let droneNodes=null, droneOn=false, shrutiPW=null;
 // midiHz / midiName come from the engine setup at the top of this script.
 // shruti-box voice: free-reed spectrum — strong low harmonics, a gentle mid bump,
@@ -751,7 +754,7 @@ function droneSet(on,rel){
     droneNodes={master,lfoG,stops};
     claimAudio();
   }
-  syncUI();
+  syncTarget(); syncUI();
 }
 function droneStep(d){
   droneIdx=clamp(droneIdx+d,0,DRONES.length-1);
@@ -1198,6 +1201,7 @@ function jrEnter(){
   const [pc,en,sk]=CHAKRA_SEQ[jr.idx];
   orbOverride=pc;
   setDroneMidi(chakraOct+pc);
+  syncTarget();                          // the centre is the target even before the drone sounds
   if(droneOn) droneSet(false);
   $('jDot').style.background=CHAKRAS[pc][0]; $('jDot').style.color=CHAKRAS[pc][0];
   $('jName').textContent=en+' — '+sk+' · '+NOTES[pc];
@@ -1249,7 +1253,7 @@ function jrNext(){                        // this chakra finished (3 tones or NE
   jrEnter();                              // next centre waits for play — never auto-starts
 }
 function jrComplete(early){
-  jr.active=false; droneSet(false); orbOverride=null;
+  jr.active=false; droneSet(false); orbOverride=null; syncTarget();
   $('jBanner').classList.add('hide');
   $('jDock').classList.add('hide');      // dock stays hidden: journey is the whole app for now
   ovlMode='jr'; jr.ui='done';
@@ -1307,7 +1311,7 @@ function jrComplete(early){
 }
 function jrAbort(){
   if(!jr.active) return;
-  jr.active=false; orbOverride=null;
+  jr.active=false; orbOverride=null; syncTarget();
   $('jBanner').classList.add('hide');
   $('jDock').classList.add('hide');
   if(droneOn) droneSet(false);

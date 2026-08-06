@@ -109,6 +109,9 @@ class VoxEngine {
 
   midiToHz(m){ return this.tuneA * Math.pow(2, (m - 69) / 12); }
   setTuneA(hz){ this.tuneA = hz === 440 ? 440 : 432; }
+  // target note for pitch-gated coherence: null = no target (free toning, score is
+  // pure tone quality). Octave-folded, so the target counts in any octave.
+  setTarget(m){ this.targetMidi = (m == null ? null : +m); }
   setInputGain(v){
     this.inputGain = (+v > 0) ? +v : this.inputGain;
     if(this.gainNode) this.gainNode.gain.value = this.inputGain;
@@ -365,7 +368,18 @@ class VoxEngine {
       const sSmooth=clamp(1-(eng.jitter/0.012+eng.shimmer/0.10)/2,0,1);
       const sRich =clamp(eng.rich/0.6,0,1);
       const sBreath=clamp(eng.breath/8,0,1);
-      eng.coh=100*(0.30*sStab+0.25*sClar+0.20*sSmooth+0.15*sRich+0.10*sBreath);
+      // pitch accuracy gates the whole score when a target note is set: a steady,
+      // clear tone on the WRONG note must not read as coherent. Octave-folded;
+      // full credit within ±35¢, sliding to a 0.25 floor at 150¢ off.
+      let sPitch=1;
+      if(this.targetMidi!=null){
+        let dev=(eng.midiC-this.targetMidi)*100;
+        dev-=Math.round(dev/1200)*1200;
+        const a=Math.abs(dev);
+        sPitch=a<=35?1:(a>=150?0.25:1-(a-35)/(150-35)*0.75);
+      }
+      eng.pitch01=sPitch;                                   // exposed for UI cues
+      eng.coh=100*(0.30*sStab+0.25*sClar+0.20*sSmooth+0.15*sRich+0.10*sBreath)*sPitch;
       eng.cohShow+=(eng.coh-eng.cohShow)*0.08;
 
       if(tone){
